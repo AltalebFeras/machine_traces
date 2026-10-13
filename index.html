@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machine-Tracés — Simulateur interactif de tracé (écran, plume, cap)</title>
+<meta name="description" content="Simulateur interactif de la machine-tracés : commandes lever, baisser, avancer, reculer, gauche, droite, diriger, positionner. Programmez, exécutez pas à pas et observez chaque état de la plume en temps réel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c1a; --bg2:#0e1430; --panel:rgba(255,255,255,.045); --panel2:rgba(255,255,255,.075);
+  --border:rgba(255,255,255,.09); --text:#e8edff; --muted:#8e9ac0; --dim:#5d688b;
+  --accent:#7c5cff; --accent2:#22d3ee; --good:#34d399; --warn:#fbbf24; --bad:#fb7185;
+  --grad:linear-gradient(135deg,#7c5cff 0%,#22d3ee 100%);
+  --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:'Outfit',system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);font-size:14px;
+  background:radial-gradient(1200px 600px at 10% -10%,rgba(124,92,255,.22),transparent 60%),
+             radial-gradient(900px 500px at 100% 0%,rgba(34,211,238,.14),transparent 60%),var(--bg);
+  background-attachment:fixed;overflow:hidden}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+code,.mono{font-family:var(--mono)}
+.app{display:flex;flex-direction:column;height:100vh}
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:rgba(8,12,26,.6);backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:42px;height:42px;border-radius:13px;background:var(--grad);display:grid;place-items:center;box-shadow:0 6px 24px rgba(124,92,255,.45)}
+h1{margin:0;font-size:21px;font-weight:700;letter-spacing:.2px}
+.brand p{margin:0;color:var(--muted);font-size:12.5px}
+.top-actions{display:flex;gap:8px}
+/* generic */
+.btn{border:1px solid var(--border);background:var(--panel2);padding:8px 13px;border-radius:11px;cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:7px;font-weight:500;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,.13);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn.primary{background:var(--grad);border-color:transparent;color:#fff;font-weight:600;box-shadow:0 6px 20px rgba(124,92,255,.35)}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.sm{padding:5px 10px;border-radius:9px;font-size:12.5px}
+.btn.ghost{background:transparent}
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:410px minmax(0,1fr) 385px;gap:14px;padding:14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;min-height:0;overflow:hidden;backdrop-filter:blur(12px)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:13px 14px}
+.card h2{margin:0 0 10px;font-size:13px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.badge{font-size:11px;padding:2px 9px;border-radius:99px;background:rgba(255,255,255,.08);color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500}
+.badge.run{background:rgba(251,191,36,.18);color:var(--warn)}
+.badge.ok{background:rgba(52,211,153,.18);color:var(--good)}
+/* tabs */
+.tabs{display:flex;gap:3px;padding:8px 8px 0;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{background:none;border:0;padding:9px 11px;border-radius:10px 10px 0 0;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent}
+.tab:hover{color:var(--text)}
+.tab.active{color:#fff;border-bottom-color:var(--accent2);background:linear-gradient(180deg,transparent,rgba(124,92,255,.14))}
+.tabpane{display:none;flex:1;min-height:0;overflow:auto;padding:14px}
+.tabpane.active{display:block}
+.tabpane::-webkit-scrollbar,.right::-webkit-scrollbar,.jwrap::-webkit-scrollbar{width:8px;height:8px}
+.tabpane::-webkit-scrollbar-thumb,.right::-webkit-scrollbar-thumb,.jwrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:9px}
+.grp{margin:16px 0 8px;font-size:12px;letter-spacing:.9px;text-transform:uppercase;color:var(--accent2);font-weight:600}
+.grp:first-child{margin-top:0}
+.hint{color:var(--muted);font-size:12.5px;line-height:1.5}
+/* commands */
+.acts{display:grid;gap:9px}
+.act{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:11px 12px;transition:.2s}
+.act:hover{border-color:rgba(124,92,255,.55);background:var(--panel2)}
+.act-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.act-name{font-family:var(--mono);font-weight:700;font-size:14.5px;color:#fff}
+.alias{font-family:var(--mono);font-size:11px;color:var(--accent2);background:rgba(34,211,238,.1);padding:1px 7px;border-radius:99px}
+.ext{font-size:10.5px;color:var(--warn);background:rgba(251,191,36,.12);padding:1px 7px;border-radius:99px}
+.act-sig{font-size:11.5px;color:var(--dim);font-family:var(--mono);margin-bottom:5px}
+.act-desc{margin:6px 0 0;font-size:12.3px;color:var(--muted);line-height:1.45}
+.act-ctl{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.field{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}
+input[type=number],input[type=text],select{background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:9px;padding:6px 8px;width:76px;outline:none}
+select{width:auto}
+input[type=number]:focus,select:focus,input[type=text]:focus{border-color:var(--accent2)}
+input[type=range]{accent-color:var(--accent2);cursor:pointer}
+input[type=color]{width:38px;height:30px;border:1px solid var(--border);border-radius:8px;background:none;padding:2px;cursor:pointer}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0 2px}
+.slider-row input[type=range]{flex:1}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.chip{background:rgba(255,255,255,.07);border:1px solid var(--border);padding:2px 9px;border-radius:99px;font-size:12px;cursor:pointer;font-family:var(--mono);color:var(--muted)}
+.chip:hover{color:#fff;border-color:var(--accent2)}
+.toggle{display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--panel);border:1px solid var(--border);border-radius:11px;margin-bottom:8px;cursor:pointer}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+.toggle span small{display:block;color:var(--dim);font-size:11.5px}
+/* editor */
+.editor{display:flex;height:330px;border:1px solid var(--border);border-radius:13px;overflow:hidden;background:#070b18}
+.gutter{width:42px;overflow:hidden;background:rgba(255,255,255,.03);border-right:1px solid var(--border);padding-top:10px;color:var(--dim);font-family:var(--mono);font-size:12px;text-align:right;user-select:none}
+.gutter div{height:22px;line-height:22px;padding-right:9px}
+.code-wrap{position:relative;flex:1;overflow:hidden}
+#src{position:absolute;inset:0;width:100%;height:100%;resize:none;border:0;outline:0;background:transparent;padding:10px 12px;font-family:var(--mono);font-size:13px;line-height:22px;white-space:pre;overflow:auto;tab-size:2;color:#dbe4ff;z-index:2}
+.bar{position:absolute;left:0;right:0;height:22px;display:none;z-index:1;pointer-events:none}
+#hlBar{background:linear-gradient(90deg,rgba(34,211,238,.28),rgba(124,92,255,.14));border-left:3px solid var(--accent2)}
+#errBar{background:rgba(251,113,133,.25);border-left:3px solid var(--bad)}
+.errbox{display:none;margin-top:10px;padding:10px 12px;border-radius:11px;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.4);color:#ffc2cb;font-size:13px;line-height:1.45}
+.okbox{margin-top:10px;padding:10px 12px;border-radius:11px;background:rgba(124,92,255,.1);border:1px solid rgba(124,92,255,.3);color:var(--muted);font-size:12.5px;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+/* examples */
+.ex{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px}
+.ex h4{margin:0 0 4px;font-size:14.5px}
+.ex p{margin:0 0 9px;color:var(--muted);font-size:12.5px;line-height:1.45}
+.tag{font-size:10.5px;padding:1px 8px;border-radius:99px;background:rgba(124,92,255,.2);color:#c5b8ff;margin-right:5px}
+/* center */
+.center{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
+.canvas-card{position:relative;flex:1;min-height:260px;border-radius:18px;overflow:hidden;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.45)}
+#screen{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+.ov{position:absolute;display:flex;gap:6px}
+.ov.tr{top:10px;right:10px}
+.ov button{width:32px;height:32px;border-radius:9px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.85);color:#1e293b;cursor:pointer;font-weight:700;backdrop-filter:blur(6px)}
+.ov button:hover{background:#fff}
+#coords{position:absolute;right:12px;bottom:10px;font-family:var(--mono);font-size:11.5px;padding:3px 9px;border-radius:8px;background:rgba(15,23,42,.72);color:#e2e8f0}
+.transport{padding:11px 14px}
+.pipe{display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:12px;overflow-x:auto}
+.pstep{padding:4px 11px;border-radius:99px;background:rgba(255,255,255,.05);color:var(--dim);border:1px solid transparent;white-space:nowrap;transition:.25s}
+.pstep.on{background:rgba(34,211,238,.16);color:#bff3ff;border-color:rgba(34,211,238,.5);box-shadow:0 0 14px rgba(34,211,238,.25)}
+.parr{color:var(--dim)}
+.tbtns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.scrub{flex:1;min-width:150px;display:flex;align-items:center;gap:10px}
+.scrub input{flex:1}
+#stepCount{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.speed{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12.5px}
+.speed input{width:90px}
+/* right */
+.right{display:flex;flex-direction:column;gap:12px;overflow:auto;min-height:0;padding-right:2px}
+.state-grid{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center}
+.dial{width:96px;height:96px}
+.dial .needle{transition:none;transform-origin:50px 50px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:13px;align-items:center}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:var(--mono);font-weight:500;text-align:right}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:11.5px;font-family:var(--mono)}
+.pill.haute{background:rgba(148,163,184,.2);color:#cbd5e1}
+.pill.basse{background:rgba(52,211,153,.2);color:var(--good)}
+.sw{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;border:1px solid rgba(255,255,255,.3)}
+.a-title{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:14px}
+.a-title code{background:rgba(124,92,255,.2);padding:2px 8px;border-radius:8px;color:#e5deff}
+.a-idx{color:var(--accent2);font-family:var(--mono);font-size:12px}
+.a-src{font-size:12px;color:var(--dim);margin-bottom:8px}
+.a-src code{color:var(--muted)}
+.spec{font-size:12.3px;line-height:1.55;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:11px;padding:9px 11px}
+.spec .kw{color:#c4b5fd;font-weight:600}
+.spec .cm{color:#7dd3c0;display:block}
+.spec .cm b{color:#fff;font-weight:600}
+.spec .sg{font-family:var(--mono);color:#e5e9ff;font-size:12px}
+.calc{margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(34,211,238,.08);border:1px dashed rgba(34,211,238,.35);font-family:var(--mono);font-size:11.8px;line-height:1.6;color:#aeeaf7}
+.vars{display:flex;flex-wrap:wrap;gap:6px}
+.var{font-family:var(--mono);font-size:12px;padding:3px 9px;border-radius:9px;background:rgba(255,255,255,.07)}
+.var b{color:var(--accent2);font-weight:500}
+.jwrap{max-height:290px;overflow:auto;border-radius:10px;border:1px solid var(--border)}
+table.j{width:100%;border-collapse:collapse;font-size:11.8px;font-family:var(--mono)}
+.j th{position:sticky;top:0;background:#151b3c;color:var(--muted);font-weight:500;text-align:left;padding:5px 6px;z-index:1}
+.j td{padding:4px 6px;border-top:1px solid rgba(255,255,255,.05);white-space:nowrap}
+.j tr{cursor:pointer}
+.j tr:hover td{background:rgba(255,255,255,.05)}
+.j tr.info td{color:var(--dim);font-style:italic}
+.j tr.cur td{background:rgba(34,211,238,.14)}
+.j tr.live td{background:rgba(251,191,36,.14);color:var(--warn)}
+.j td.lab{white-space:normal;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+/* course */
+.doc h3{margin:18px 0 6px;font-size:16px;color:#fff}
+.doc h3:first-child{margin-top:0}
+.doc p,.doc li{color:#c3cbe8;line-height:1.6;font-size:13.2px}
+.doc ul{padding-left:18px;margin:6px 0}
+.doc .spec{margin:8px 0}
+.doc table{border-collapse:collapse;width:100%;font-size:12.5px;margin:6px 0}
+.doc td,.doc th{border:1px solid var(--border);padding:5px 8px;text-align:left;vertical-align:top}
+.doc th{color:var(--muted);font-weight:500;background:rgba(255,255,255,.04)}
+.doc kbd{font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.1);padding:1px 6px;border-radius:5px;border:1px solid var(--border)}
+.doc code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-size:12px;color:#d6dcff}
+.doc details{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px 12px;margin:8px 0}
+.doc summary{cursor:pointer;font-weight:600;color:#fff}
+.steps-how{counter-reset:s;list-style:none;padding:0}
+.steps-how li{counter-increment:s;position:relative;padding-left:34px;margin:10px 0}
+.steps-how li::before{content:counter(s);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--grad);display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);opacity:0;background:#1b2250;border:1px solid var(--border);padding:10px 18px;border-radius:12px;transition:.3s;z-index:50;pointer-events:none;max-width:90vw;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.bad{border-color:var(--bad);color:#ffd0d7}
+#toast.warn{border-color:var(--warn);color:#ffe9a8}
+.optgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.optrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--panel);border:1px solid var(--border);border-radius:11px;margin-bottom:8px;font-size:13px}
+.optrow input[type=range]{width:130px}
+.optrow output{font-family:var(--mono);color:var(--accent2);min-width:34px;text-align:right;font-size:12px}
+@media (max-width:1300px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100vh}
+  .layout{grid-template-columns:minmax(330px,400px) minmax(0,1fr);grid-auto-rows:auto}
+  .left{max-height:900px}
+  .canvas-card{flex:none;height:min(66vh,620px)}
+  .right{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));overflow:visible}
+}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .center{order:-1}
+  .canvas-card{height:min(100vw,520px)}
+}
+
+.team{
+color: #c4b5fd;
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20 L9 8 L13 14 L21 4"/><path d="M17 4h4v4"/></svg>
+    </div>
+    <div>
+      <h1>Machine-Tracés</h1>
+      <p>Simulateur interactif. écran, plume, cap — chaque état visible en temps réel. Fait par Claude ai avec l'aide de <a class="team" href="https://feras.fr" target="_blank">Feras Altaleb</a></p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="btn" id="btnHelp" title="Ouvrir le cours">🎓 Comment ça marche ?</button>
+    <button class="btn" id="btnPng" title="Exporter le dessin en PNG">🖼 Exporter PNG</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ================= GAUCHE ================= -->
+  <aside class="panel left" aria-label="Commandes et programme">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="cmd" id="tab-cmd" role="tab">🎛 Commandes</button>
+      <button class="tab" data-tab="prog" id="tab-prog" role="tab">📝 Programme</button>
+      <button class="tab" data-tab="ex" id="tab-ex" role="tab">📚 Exemples</button>
+      <button class="tab" data-tab="opt" id="tab-opt" role="tab">⚙️ Options</button>
+      <button class="tab" data-tab="doc" id="tab-doc" role="tab">🎓 Cours</button>
+    </nav>
+
+    <!-- Commandes -->
+    <section class="tabpane active" id="pane-cmd">
+      <p class="hint" style="margin-top:0">Cliquez sur <b>Exécuter</b> : l’action est appliquée à la machine et animée sur l’écran. Chaque action modifie l’état <b>(écran, cap, pe, pp)</b> décrit dans le panneau de droite. <b>Double-clic</b> sur l’écran = positionner la plume à cet endroit.</p>
+      <label class="toggle"><input type="checkbox" data-opt="writeEditor"><span>Écrire aussi chaque commande dans le programme<small>Construisez votre algorithme en cliquant, puis relancez-le.</small></span></label>
+      <div id="cmdList"></div>
+    </section>
+
+    <!-- Programme -->
+    <section class="tabpane" id="pane-prog">
+      <div class="editor" id="editor">
+        <div class="gutter"><div id="gutterInner"></div></div>
+        <div class="code-wrap">
+          <div class="bar" id="hlBar"></div>
+          <div class="bar" id="errBar"></div>
+          <textarea id="src" spellcheck="false" wrap="off" aria-label="Programme"></textarea>
+        </div>
+      </div>
+      <div class="errbox" id="errBox"></div>
+      <div class="row">
+        <button class="btn primary" id="bRun">▶ Exécuter le programme</button>
+        <button class="btn" id="bStepMode">⏭ Pas à pas</button>
+        <button class="btn" id="bClearMachine">↺ Réinitialiser la machine</button>
+      </div>
+      <div class="row">
+        <button class="btn sm" id="bOpen">📂 Ouvrir</button>
+        <button class="btn sm" id="bSave">💾 Enregistrer</button>
+        <button class="btn sm" id="bCopy">📋 Copier</button>
+        <button class="btn sm" id="bClearEditor">🗑 Vider l’éditeur</button>
+        <input type="file" id="fileIn" accept=".txt,.mt,text/plain" hidden>
+      </div>
+      <h3 class="grp" style="margin-top:16px">Insérer un modèle</h3>
+      <div class="chips" id="snips">
+        <span class="chip" data-snip="rep">répéter … fois</span>
+        <span class="chip" data-snip="act">action paramétrée</span>
+        <span class="chip" data-snip="si">si … alors</span>
+        <span class="chip" data-snip="pos">positionner</span>
+        <span class="chip" data-snip="var">variable ←</span>
+        <span class="chip" data-snip="col">couleur</span>
+      </div>
+      <div class="okbox">
+        <b>Comment ça marche ?</b> Votre programme est d’abord <b>analysé</b>, puis transformé en une <b>liste d’étapes</b> (boucles dépliées, actions paramétrées appelées). Ensuite chaque étape est exécutée l’une après l’autre : la ligne en cours est surlignée, l’état de la machine est mis à jour et le dessin s’anime. Utilisez <b>Pas à pas</b> pour avancer à votre rythme.
+      </div>
+    </section>
+
+    <!-- Exemples -->
+    <section class="tabpane" id="pane-ex"><div id="exList"></div></section>
+
+    <!-- Options -->
+    <section class="tabpane" id="pane-opt">
+      <h3 class="grp">Exécution</h3>
+      <div class="optrow"><span>Vitesse</span><input type="range" min="1" max="10" step="1" data-opt="speed"><output data-out="speed"></output></div>
+      <div class="optrow"><span>Délai entre étapes (ms)</span><input type="range" min="0" max="2000" step="50" data-opt="gap"><output data-out="gap"></output></div>
+      <label class="toggle"><input type="checkbox" data-opt="anim"><span>Animer les actions<small>Désactivé : chaque étape s’applique instantanément.</small></span></label>
+      <label class="toggle"><input type="checkbox" data-opt="control"><span>Montrer les étapes de contrôle<small>Boucles, itérations, appels d’actions, affectations, conditions.</small></span></label>
+      <label class="toggle"><input type="checkbox" data-opt="restart"><span>Repartir de l’état initial à chaque exécution<small>Sinon le programme continue depuis l’état courant de la machine.</small></span></label>
+      <label class="toggle"><input type="checkbox" data-opt="angleCheck"><span>Contrôler le type Angle [-360 ; 360]<small>Refuse gauche/droite/diriger hors de l’intervalle (comme dans le cours).</small></span></label>
+      <label class="toggle"><input type="checkbox" data-opt="shortNames"><span>Noms courts dans le programme (av, re, ga, dr…)<small>Pour les commandes ajoutées automatiquement.</small></span></label>
+
+      <h3 class="grp">Écran</h3>
+      <div class="optrow"><span>Thème de l’écran</span>
+        <select data-opt="theme"><option value="paper">Papier</option><option value="chalk">Tableau noir</option><option value="blueprint">Plan bleu</option><option value="mint">Menthe</option></select></div>
+      <div class="optrow"><span>Zoom</span><input type="range" min="0.2" max="5" step="0.05" data-opt="zoom"><output data-out="zoom"></output></div>
+      <div class="optrow"><span>Couleur du trait par défaut</span><span><input type="color" id="inkPick"> <button class="btn sm" id="inkAuto">auto</button></span></div>
+      <div class="optrow"><span>Épaisseur par défaut</span><input type="range" min="1" max="12" step="0.5" data-opt="width"><output data-out="width"></output></div>
+      <div class="optrow"><span>Taille de la plume</span><input type="range" min="6" max="30" step="1" data-opt="turtleSize"><output data-out="turtleSize"></output></div>
+      <div class="optgrid">
+        <label class="toggle"><input type="checkbox" data-opt="grid"><span>Grille</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="axes"><span>Axes</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="ticks"><span>Graduations</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="turtle"><span>Plume</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="heading"><span>Direction du cap</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="ghost"><span>Trajets plume haute</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="vertices"><span>Sommets</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="numbers"><span>Numéroter les segments</span></label>
+        <label class="toggle"><input type="checkbox" data-opt="hud"><span>Étiquette d’action</span></label>
+      </div>
+      <div class="row"><button class="btn" id="bCenter">⌖ Recentrer la vue</button><button class="btn" id="bDefaults">↺ Options par défaut</button></div>
+    </section>
+
+    <!-- Cours -->
+    <section class="tabpane doc" id="pane-doc"></section>
+  </aside>
+
+  <!-- ================= CENTRE ================= -->
+  <section class="center" aria-label="Écran de la machine-tracés">
+    <div class="card transport">
+      <div class="pipe" id="pipe" aria-label="Déroulement">
+        <span class="pstep" data-p="edit">① Programme</span><span class="parr">›</span>
+        <span class="pstep" data-p="parse">② Analyse</span><span class="parr">›</span>
+        <span class="pstep" data-p="exec">③ Exécution de l’étape</span><span class="parr">›</span>
+        <span class="pstep" data-p="draw">④ Écran mis à jour</span>
+      </div>
+      <div class="tbtns">
+        <button class="btn" id="bReset" title="Revenir au début (Début)">⏮</button>
+        <button class="btn" id="bPrev" title="Étape précédente (←)">◀</button>
+        <button class="btn primary" id="bPlay" title="Lecture / pause (Espace)">▶ Lecture</button>
+        <button class="btn" id="bNext" title="Étape suivante (→)">Pas suivant ▶❘</button>
+        <button class="btn" id="bEnd" title="Aller à la fin (Fin)">⏭</button>
+        <div class="scrub"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Progression"><span id="stepCount">Étape 0 / 0</span></div>
+        <label class="speed">Vitesse <input type="range" min="1" max="10" step="1" data-opt="speed"></label>
+      </div>
+    </div>
+    <div class="canvas-card" id="canvasCard">
+      <canvas id="screen" aria-label="Écran de la machine-tracés"></canvas>
+      <div class="ov tr">
+        <button id="zIn" title="Zoom +">+</button><button id="zOut" title="Zoom −">−</button><button id="zCenter" title="Recentrer">⌖</button>
+      </div>
+      <div id="coords">x : 0 · y : 0</div>
+    </div>
+  </section>
+
+  <!-- ================= DROITE ================= -->
+  <aside class="right" aria-label="État et explications">
+    <div class="card" id="cardState">
+      <h2>État de la machine <span class="badge" id="stBadge">temps réel</span></h2>
+      <div class="state-grid">
+        <svg class="dial" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="46" fill="rgba(0,0,0,.25)" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
+          <g stroke="rgba(255,255,255,.35)" stroke-width="1.5">
+            <line x1="50" y1="6" x2="50" y2="13"/><line x1="94" y1="50" x2="87" y2="50"/><line x1="50" y1="94" x2="50" y2="87"/><line x1="6" y1="50" x2="13" y2="50"/>
+          </g>
+          <g font-size="8" fill="#8e9ac0" text-anchor="middle" font-family="JetBrains Mono, monospace">
+            <text x="50" y="23">90°</text><text x="80" y="53">0°</text><text x="50" y="84">270°</text><text x="20" y="53">180°</text>
+          </g>
+          <path d="M50 50 L86 50" stroke="rgba(34,211,238,.25)" stroke-width="1" stroke-dasharray="3 3"/>
+          <g class="needle" id="needle"><polygon points="82,50 52,41 56,50 52,59" fill="#22d3ee"/><circle cx="50" cy="50" r="4" fill="#7c5cff"/></g>
+        </svg>
+        <dl class="kv">
+          <dt>cap</dt><dd id="stCap">0°</dd>
+          <dt>pe</dt><dd><span class="pill haute" id="stPe">haute</span></dd>
+          <dt>pp</dt><dd id="stPp">(0 ; 0)</dd>
+        </dl>
+      </div>
+      <dl class="kv" style="margin-top:10px">
+        <dt>écran</dt><dd id="stEcran">vide</dd>
+        <dt>couleur · épaisseur</dt><dd><span class="sw" id="stColor"></span> <span id="stWidth">2,5</span></dd>
+      </dl>
+    </div>
+
+    <div class="card" id="cardAction">
+      <h2>Explication de l’action <span class="badge" id="actBadge">—</span></h2>
+      <div id="actBody"></div>
+    </div>
+
+    <div class="card">
+      <h2>Variables du lexique</h2>
+      <div class="vars" id="varsBox"><span class="hint">Aucune variable pour l’instant.</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Journal des états intermédiaires <span class="badge" id="jBadge">0</span></h2>
+      <div class="jwrap" id="jwrap">
+        <table class="j"><thead><tr><th>#</th><th>Instruction</th><th>cap</th><th>pe</th><th>pp</th><th>tr.</th></tr></thead><tbody id="jbody"></tbody></table>
+      </div>
+      <p class="hint" style="margin:8px 0 0">Cliquez sur une ligne pour revenir à cet état. « tr. » = nombre de segments tracés à l’écran.</p>
+    </div>
+  </aside>
+</main>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   Utilitaires
+   ============================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = (n, d = 2) => {
+  if (typeof n !== 'number' || !isFinite(n)) return String(n);
+  let r = Math.round(n * 10 ** d) / 10 ** d; if (Object.is(r, -0)) r = 0;
+  return String(r).replace('.', ',');
+};
+const normCap = c => ((c % 360) + 360) % 360;
+const fmtCap = c => fmt(normCap(Math.round(c * 1e6) / 1e6) % 360);
+const fmtPt = p => `(${fmt(p.x)} ; ${fmt(p.y)})`;
+const rad = d => d * Math.PI / 180;
+class MTError extends Error { constructor(msg, line) { super(msg); this.line = line || 0; } }
+let toastTimer;
+function toast(msg, kind = '') {
+  const t = $('#toast'); t.textContent = msg; t.className = 'show ' + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = '', 3200);
+}
+
+/* ============================================================
+   Spécification des actions (d'après le cours)
+   ============================================================ */
+const ACTIONS = {
+  vider: { alias: '', param: '',
+    effet: 'vide l’écran et positionne la plume au centre, en position haute, cap 0',
+    ei: 'écran et plume indifférents', ef: 'écran vide, cap = 0, pe = haute, pp = (0,0)',
+    desc: 'Efface l’écran et remet la plume au centre, plume haute, cap 0.' },
+  lever: { alias: '', param: '',
+    effet: 'lève la plume', ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀',
+    ef: 'écran inchangé, cap = a₀, pe = haute, pp = s₀', desc: 'La plume ne trace plus lorsqu’elle se déplace.' },
+  baisser: { alias: '', param: '',
+    effet: 'baisse la plume', ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀',
+    ef: 'écran inchangé, cap = a₀, pe = basse, pp = s₀', desc: 'La plume trace en se déplaçant.' },
+  avancer: { alias: 'av', param: 'consulté x : réel',
+    effet: 'avance la plume dans la direction du cap sur une longueur x',
+    ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀, x = x₀',
+    ef: 'si p₀ = haute, écran inchangé ; si p₀ = basse, un segment de longueur x₀ est tracé depuis s₀ dans la direction a₀ ; soit s₁ l’extrémité de ce segment ; si x < 0, le segment est tracé dans la direction opposée soit 180 + a₀. cap = a₀, pe = p₀, pp = s₁, x = x₀',
+    desc: 'Avance de x dans la direction du cap (en arrière si x < 0).' },
+  reculer: { alias: 're', param: 'consulté x : réel',
+    effet: 'recule la plume dans la direction opposée au cap sur une longueur x',
+    ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀, x = x₀',
+    ef: 'si p₀ = haute, écran inchangé ; si p₀ = basse, un segment de longueur x est tracé depuis s₀ dans la direction a₀ + 180 ; soit s₁ l’extrémité de ce segment ; si x < 0, le segment est tracé dans la direction du cap a₀. pe = p₀, pp = s₁, x = x₀',
+    desc: 'Recule de x (direction opposée au cap).' },
+  positionner: { alias: 'pos', param: 'consulté x : Point',
+    effet: 'positionne la plume au point x',
+    ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀, x = x₀',
+    ef: 'si p₀ = haute, écran inchangé ; si p₀ = basse, un segment est tracé du point s₀ au point x₀ ; cap = a₀, pe = p₀, pp = x₀',
+    desc: 'Déplace la plume au point (x ; y). Le cap ne change pas.' },
+  gauche: { alias: 'ga', param: 'consulté x : Angle',
+    effet: 'oriente la plume de x degrés à gauche par rapport au cap initial',
+    ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀, x = x₀',
+    ef: 'écran inchangé, cap = a₀ + x₀, pe = p₀, pp = s₀, x = x₀', desc: 'Tourne vers la gauche (sens trigonométrique) de x degrés.' },
+  droite: { alias: 'dr', param: 'consulté x : Angle',
+    effet: 'oriente la plume de x degrés à droite par rapport au cap initial',
+    ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀, x = x₀',
+    ef: 'écran inchangé, cap = a₀ − x₀, pe = p₀, pp = s₀, x = x₀', desc: 'Tourne vers la droite (sens horaire) de x degrés.' },
+  diriger: { alias: 'dir', param: 'consulté x : Angle',
+    effet: 'oriente la plume dans la direction x',
+    ei: 'écran indifférent, cap = a₀, pe = p₀, pp = s₀, x = x₀',
+    ef: 'écran inchangé, cap = x₀, pe = p₀, pp = s₀, x = x₀', desc: 'Fixe directement le cap (0° = vers la droite, 90° = vers le haut).' },
+  couleur: { alias: '', param: 'consulté c : Couleur', ext: true,
+    effet: 'change la couleur du trait (extension de l’application)', ei: 'écran indifférent, couleur = c₀',
+    ef: 'écran inchangé, couleur = c, cap, pe et pp inchangés', desc: 'Nom (rouge, bleu…), code #rrggbb ou nombre 0-360 (teinte).' },
+  epaisseur: { alias: '', param: 'consulté e : réel > 0', ext: true,
+    effet: 'change l’épaisseur du trait (extension de l’application)', ei: 'écran indifférent, épaisseur = e₀',
+    ef: 'écran inchangé, épaisseur = e, cap, pe et pp inchangés', desc: 'Épaisseur du trait en pixels.' }
+};
+const NAMEMAP = {};
+for (const [k, v] of Object.entries(ACTIONS)) { NAMEMAP[norm(k)] = k; if (v.alias) NAMEMAP[norm(v.alias)] = k; }
+
+const COLORS = { noir:'#111827', rouge:'#e11d48', bleu:'#2563eb', vert:'#16a34a', jaune:'#eab308', orange:'#f97316',
+  violet:'#7c3aed', rose:'#ec4899', gris:'#64748b', blanc:'#ffffff', cyan:'#06b6d4', marron:'#92400e', turquoise:'#14b8a6' };
+
+/* ============================================================
+   Langage : prétraitement, lexer, parseur
+   ============================================================ */
+function preprocess(src) {
+  const raw = src.split(/\r?\n/), proc = [], disp = [];
+  for (const l of raw) {
+    const t = l.replace(/\/\/.*$/, '').trim(), n = norm(t);
+    disp.push(t);
+    if (/^fin\s+algorithme\s+(de|d')\s*\S+/.test(n) && !/principal/.test(n)) proc.push('faction');
+    else if (/^(lexique|algorithme|fin\s+algorithme)\b/.test(n) || /^type\s/.test(n) || n === 'fagregat') proc.push('');
+    else if (t.includes(':') && !t.includes('(')) proc.push('');
+    else proc.push(t);
+  }
+  return { proc, disp };
+}
+function tokenize(lines) {
+  const toks = [];
+  const prevId = () => { const p = toks[toks.length - 1]; return p && p.t === 'id'; };
+  lines.forEach((ln, li) => {
+    const line = li + 1; let i = 0;
+    while (i < ln.length) {
+      const c = ln[i], rest = ln.slice(i);
+      if (c === ' ' || c === '\t') { i++; continue; }
+      let m;
+      if ((m = /^\d+(\.\d+)?/.exec(rest))) { toks.push({ t: 'num', v: parseFloat(m[0]), line }); i += m[0].length; continue; }
+      if (c === '"') { const j = ln.indexOf('"', i + 1); if (j < 0) throw new MTError('Guillemet fermant manquant', line); toks.push({ t: 'str', v: ln.slice(i + 1, j), line }); i = j + 1; continue; }
+      if ((m = /^[\p{L}_][\p{L}\p{N}_]*/u.exec(rest))) { toks.push({ t: 'id', v: m[0], line }); i += m[0].length; continue; }
+      if (rest.startsWith('<-') && prevId()) { toks.push({ t: 'op', v: '←', line }); i += 2; continue; }
+      if (rest.startsWith(':=')) { toks.push({ t: 'op', v: '←', line }); i += 2; continue; }
+      if (rest.startsWith('<=') || rest.startsWith('>=') || rest.startsWith('!=') || rest.startsWith('==')) { toks.push({ t: 'op', v: rest.slice(0, 2), line }); i += 2; continue; }
+      if (c === '≤') { toks.push({ t: 'op', v: '<=', line }); i++; continue; }
+      if (c === '≥') { toks.push({ t: 'op', v: '>=', line }); i++; continue; }
+      if (c === '≠') { toks.push({ t: 'op', v: '!=', line }); i++; continue; }
+      if (c === '←') { toks.push({ t: 'op', v: '←', line }); i++; continue; }
+      if (c === ';') { toks.push({ t: 'nl', v: ';', line }); i++; continue; }
+      if ('+-*/%()<>=,.:'.includes(c)) { toks.push({ t: 'op', v: c === '=' ? '=' : c, line }); i++; continue; }
+      throw new MTError(`Caractère inattendu « ${c} »`, line);
+    }
+    toks.push({ t: 'nl', v: '\n', line });
+  });
+  toks.push({ t: 'eof', v: 'fin du programme', line: lines.length });
+  // fusion « fin répéter » → frépéter, etc.
+  const out = [];
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i], n = toks[i + 1];
+    if (t.t === 'id' && norm(t.v) === 'fin' && n && n.t === 'id' && ['repeter', 'action', 'si'].includes(norm(n.v))) {
+      out.push({ t: 'id', v: 'f' + n.v, line: t.line }); i++;
+    } else out.push(t);
+  }
+  return out;
+}
+function parse(toks) {
+  let p = 0; const defs = {};
+  const peek = () => toks[p], next = () => toks[p++];
+  const kw = t => t.t === 'id' ? norm(t.v) : null;
+  const isOp = (t, v) => t.t === 'op' && t.v === v;
+  const skipNL = () => { while (toks[p].t === 'nl') p++; };
+  const expectOp = v => { const t = next(); if (!isOp(t, v)) throw new MTError(`« ${v} » attendu (trouvé : ${t.v === '\n' ? 'fin de ligne' : t.v})`, t.line); };
+  const endStmt = () => { const t = peek(); if (t.t === 'nl') { p++; return; } if (t.t === 'eof') return; throw new MTError(`Élément inattendu « ${t.v} »`, t.line); };
+
+  function parseBlock(terms, openLine, what) {
+    const out = [];
+    for (;;) {
+      skipNL(); const t = peek();
+      if (t.t === 'eof') { if (terms) throw new MTError(`« ${what} » n’est pas refermé (attendu : ${terms[terms.length - 1]})`, openLine); return out; }
+      if (terms && t.t === 'id' && terms.includes(kw(t))) return out;
+      const s = parseStmt(); if (s) out.push(s);
+    }
+  }
+  function parseParams() {
+    const params = []; let cur = [];
+    const flush = () => {
+      const ci = cur.findIndex(t => isOp(t, ':'));
+      const before = (ci < 0 ? cur : cur.slice(0, ci)).filter(t => t.t === 'id' && !['consulte', 'modifie', 'produit', 'donne', 'resultat'].includes(norm(t.v)));
+      const typ = ci < 0 ? '' : cur.slice(ci + 1).map(t => t.v).join('');
+      if (before.length && !/machine/.test(norm(typ))) params.push(before[before.length - 1].v);
+      cur = [];
+    };
+    for (;;) {
+      const t = next();
+      if (t.t === 'eof' || t.t === 'nl') throw new MTError('Parenthèse fermante manquante dans les paramètres', t.line);
+      if (isOp(t, ')')) { flush(); break; }
+      if (isOp(t, ',')) flush(); else cur.push(t);
+    }
+    return params;
+  }
+  function parseStmt() {
+    const t = peek();
+    if (t.t !== 'id') throw new MTError(`Instruction inattendue : « ${t.v} »`, t.line);
+    const k = kw(t);
+    if (k === 'repeter') {
+      next(); const n = parseAdd();
+      if (peek().t === 'id' && kw(peek()) === 'fois') next();
+      endStmt(); const body = parseBlock(['frepeter'], t.line, 'répéter'); next();
+      return { t: 'rep', n, body, line: t.line };
+    }
+    if (k === 'si') {
+      next(); const cond = parseCmp();
+      if (peek().t === 'id' && kw(peek()) === 'alors') next();
+      endStmt(); const th = parseBlock(['sinon', 'fsi'], t.line, 'si'); let el = [];
+      if (kw(peek()) === 'sinon') { next(); endStmt(); el = parseBlock(['fsi'], t.line, 'si'); }
+      next();
+      return { t: 'si', cond, th, el, line: t.line };
+    }
+    if (k === 'action') {
+      next(); const nm = next();
+      if (nm.t !== 'id') throw new MTError('Nom d’action attendu après « action »', nm.line);
+      if (NAMEMAP[norm(nm.v)]) throw new MTError(`« ${nm.v} » est le nom d’une action de la machine : choisissez un autre nom`, nm.line);
+      let params = []; if (isOp(peek(), '(')) { next(); params = parseParams(); }
+      endStmt(); const body = parseBlock(['faction'], t.line, 'action'); next();
+      defs[norm(nm.v)] = { name: nm.v, params, body, line: t.line };
+      return null;
+    }
+    if (['frepeter', 'faction', 'fsi', 'sinon'].includes(k)) throw new MTError(`« ${t.v} » sans début correspondant`, t.line);
+    const path = [next().v];
+    while (isOp(peek(), '.')) { next(); const id = next(); if (id.t !== 'id') throw new MTError('Nom attendu après « . »', id.line); path.push(id.v); }
+    const nt = peek();
+    if (isOp(nt, '←') || isOp(nt, '=')) { next(); const e = parseAdd(); endStmt(); return { t: 'assign', path, expr: e, line: t.line }; }
+    let args = []; if (isOp(nt, '(')) { next(); args = parseArgs(); }
+    endStmt();
+    if (path.length > 2) throw new MTError(`Instruction invalide : « ${path.join('.')} »`, t.line);
+    return { t: 'call', name: path[path.length - 1], args, line: t.line };
+  }
+  function parseArgs() {
+    const a = []; if (isOp(peek(), ')')) { next(); return a; }
+    for (;;) { a.push(parseAdd()); const t = next(); if (isOp(t, ')')) return a; if (!isOp(t, ',')) throw new MTError(`« , » ou « ) » attendu (trouvé : ${t.v === '\n' ? 'fin de ligne' : t.v})`, t.line); }
+  }
+  function parseCmp() {
+    const l = parseAdd(), t = peek();
+    if (t.t === 'op' && ['<', '>', '<=', '>=', '=', '==', '!='].includes(t.v)) { next(); const r = parseAdd(); return { t: 'bin', op: t.v === '=' ? '==' : t.v, l, r, line: t.line }; }
+    return l;
+  }
+  function parseAdd() {
+    let l = parseMul();
+    while (peek().t === 'op' && (peek().v === '+' || peek().v === '-')) { const o = next(); l = { t: 'bin', op: o.v, l, r: parseMul(), line: o.line }; }
+    return l;
+  }
+  function parseMul() {
+    let l = parseUnary();
+    while (peek().t === 'op' && ['*', '/', '%'].includes(peek().v)) { const o = next(); l = { t: 'bin', op: o.v, l, r: parseUnary(), line: o.line }; }
+    return l;
+  }
+  function parseUnary() {
+    const t = peek();
+    if (isOp(t, '-')) { next(); return { t: 'neg', e: parseUnary(), line: t.line }; }
+    if (isOp(t, '+')) { next(); return parseUnary(); }
+    return parsePrimary();
+  }
+  function parsePrimary() {
+    const t = next();
+    if (t.t === 'num') return { t: 'num', v: t.v };
+    if (t.t === 'str') return { t: 'str', v: t.v };
+    if (isOp(t, '(')) { const e = parseCmp(); expectOp(')'); return e; }
+    if (isOp(t, '<')) { const x = parseAdd(); expectOp(','); const y = parseAdd(); expectOp('>'); return { t: 'pt', x, y, line: t.line }; }
+    if (t.t === 'id') {
+      let e;
+      if (isOp(peek(), '(')) { next(); e = { t: 'fn', name: t.v, args: parseArgs(), line: t.line }; }
+      else e = { t: 'var', name: t.v, line: t.line };
+      while (isOp(peek(), '.') && toks[p + 1].t === 'id') { next(); e = { t: 'fld', obj: e, name: next().v, line: t.line }; }
+      return e;
+    }
+    throw new MTError(`Expression attendue (trouvé : ${t.v === '\n' ? 'fin de ligne' : t.v})`, t.line);
+  }
+  const ast = parseBlock(null, 0, '');
+  return { ast, defs };
+}
+
+/* ============================================================
+   Machine : application d'une action sur un état
+   ============================================================ */
+const MACHINE = { $: 'machine' };
+const INIT = () => ({ cap: 0, pe: 'haute', x: 0, y: 0, color: null, width: null, segStart: 0, segEnd: 0, nDown: 0 });
+let CUR_LINE = 0, CUR_OPTS = { angleCheck: true };
+
+function validate(act, args) {
+  const err = m => new MTError(m, CUR_LINE);
+  const need = n => { if (args.length !== n) throw err(`« ${act} » attend ${n} paramètre(s) (${args.length} fourni(s))`); };
+  const nums = () => args.map(v => { if (typeof v !== 'number' || !isFinite(v)) throw err(`« ${act} » attend un nombre réel`); return v; });
+  switch (act) {
+    case 'vider': case 'lever': case 'baisser': need(0); return [];
+    case 'avancer': case 'reculer': need(1); return nums();
+    case 'gauche': case 'droite': case 'diriger': {
+      need(1); const [d] = nums();
+      if (CUR_OPTS.angleCheck && (d < -360 || d > 360)) throw err(`Le type Angle est défini entre -360 et 360 (reçu : ${fmt(d)})`);
+      return [d];
+    }
+    case 'positionner':
+      if (args.length === 1 && args[0] && args[0].$ === 'pt') return [args[0]];
+      if (args.length === 2) { const [x, y] = nums(); return [{ $: 'pt', x, y }]; }
+      throw err('« positionner » attend un Point : positionner(x, y) ou positionner(<x,y>)');
+    case 'couleur': {
+      need(1); const v = args[0];
+      if (typeof v === 'number') return [{ $: 'col', css: `hsl(${normCap(v)},85%,48%)`, name: 'teinte ' + fmt(v) }];
+      if (typeof v === 'string') {
+        const n = norm(v);
+        if (n === 'auto' || n === 'defaut') return [{ $: 'col', css: null, name: 'auto' }];
+        if (COLORS[n]) return [{ $: 'col', css: COLORS[n], name: n }];
+        if (/^#[0-9a-f]{3,8}$/i.test(v)) return [{ $: 'col', css: v, name: v }];
+      }
+      throw err('Couleur inconnue (essayez rouge, bleu, vert… ou #rrggbb ou un nombre 0-360)');
+    }
+    case 'epaisseur': {
+      need(1); const [e] = nums(); if (e <= 0 || e > 60) throw err('L’épaisseur doit être comprise entre 0 et 60'); return [e];
+    }
+  }
+  throw err(`Action « ${act} » inconnue`);
+}
+function applyAction(st, act, args, segs, no) {
+  const a = { ...st }; let seg = null;
+  const move = (nx, ny) => {
+    a.x = nx; a.y = ny;
+    if (Math.hypot(nx - st.x, ny - st.y) > 1e-9) {
+      seg = { x1: st.x, y1: st.y, x2: nx, y2: ny, color: st.color, width: st.width, down: st.pe === 'basse', no };
+      segs.push(seg); a.segEnd = segs.length; if (seg.down) a.nDown++;
+    }
+  };
+  switch (act) {
+    case 'vider': a.cap = 0; a.pe = 'haute'; a.x = 0; a.y = 0; a.color = null; a.width = null; a.segStart = a.segEnd = segs.length; a.nDown = 0; break;
+    case 'lever': a.pe = 'haute'; break;
+    case 'baisser': a.pe = 'basse'; break;
+    case 'avancer': move(st.x + args[0] * Math.cos(rad(st.cap)), st.y + args[0] * Math.sin(rad(st.cap))); break;
+    case 'reculer': move(st.x - args[0] * Math.cos(rad(st.cap)), st.y - args[0] * Math.sin(rad(st.cap))); break;
+    case 'gauche': a.cap = st.cap + args[0]; break;
+    case 'droite': a.cap = st.cap - args[0]; break;
+    case 'diriger': a.cap = args[0]; break;
+    case 'positionner': move(args[0].x, args[0].y); break;
+    case 'couleur': a.color = args[0].css; break;
+    case 'epaisseur': a.width = args[0]; break;
+  }
+  return { after: a, seg };
+}
+function fmtArg(v) {
+  if (typeof v === 'number') return fmt(v);
+  if (v && v.$ === 'pt') return fmtPt(v);
+  if (v && v.$ === 'col') return v.name;
+  if (v && v.$ === 'rec') return '{' + Object.entries(v.f).map(([k, x]) => k + ': ' + fmtArg(x)).join(', ') + '}';
+  if (typeof v === 'boolean') return v ? 'vrai' : 'faux';
+  if (typeof v === 'string') return '"' + v + '"';
+  return String(v);
+}
+const mkLabel = (act, args) => args.length ? `${act}(${args.map(fmtArg).join(', ')})` : act;
+
+/* ============================================================
+   Interpréteur : produit la liste complète des étapes
+   ============================================================ */
+const FN = { cos: d => Math.cos(rad(d)), sin: d => Math.sin(rad(d)), tan: d => Math.tan(rad(d)),
+  acos: x => Math.acos(x) * 180 / Math.PI, asin: x => Math.asin(x) * 180 / Math.PI, atan: x => Math.atan(x) * 180 / Math.PI,
+  sqrt: Math.sqrt, rac: Math.sqrt, racine: Math.sqrt, abs: Math.abs, arrondi: Math.round, entier: Math.trunc, min: Math.min, max: Math.max };
+const MAXSTEPS = 20000, MAXDEPTH = 60;
+
+function runProgram(ast, defs, disp, base, baseSegs, opts) {
+  const segs = baseSegs.slice(0, base.segEnd);
+  let cur = base; const steps = [], states = [base];
+  const err = m => new MTError(m, CUR_LINE);
+  CUR_OPTS = opts;
+  const newEnv = () => ({ vars: Object.create(null), names: Object.create(null) });
+  const setVar = (env, name, v) => { const k = norm(name); env.vars[k] = v; env.names[k] = name; };
+  const snap = env => Object.keys(env.vars).map(k => [env.names[k], fmtArg(env.vars[k])]);
+  const push = s => {
+    if (steps.length >= MAXSTEPS) throw err(`Limite de ${MAXSTEPS} étapes atteinte (boucle trop longue ou récursion infinie ?)`);
+    s.i = steps.length; steps.push(s); states.push(s.after); cur = s.after;
+  };
+  const info = (type, label, text, env, depth, line, extra) => {
+    if (!opts.control) return;
+    push({ kind: 'info', type, label, text, line, src: disp[line - 1] || '', depth, before: cur, after: cur, vars: snap(env), ...extra });
+  };
+  const num = (v, what) => { if (typeof v !== 'number' || !isFinite(v)) throw err(`${what || 'Valeur'} : un nombre est attendu`); return v; };
+
+  function evalE(e, env) {
+    switch (e.t) {
+      case 'num': case 'str': return e.v;
+      case 'pt': return { $: 'pt', x: num(evalE(e.x, env), 'Coordonnée x'), y: num(evalE(e.y, env), 'Coordonnée y') };
+      case 'var': {
+        const k = norm(e.name);
+        if (k in env.vars) return env.vars[k];
+        if (k === 'm') return MACHINE;
+        if (k === 'pi') return Math.PI;
+        if (k === 'vrai') return true; if (k === 'faux') return false;
+        throw err(`Variable « ${e.name} » inconnue ou pas encore affectée`);
+      }
+      case 'fld': {
+        const o = evalE(e.obj, env), k = norm(e.name);
+        if (o && o.$ === 'pt' && (k === 'x' || k === 'y')) return o[k];
+        if (o && o.$ === 'rec' && k in o.f) return o.f[k];
+        throw err(`Champ « ${e.name} » inexistant`);
+      }
+      case 'neg': return -num(evalE(e.e, env), 'Opposé');
+      case 'fn': {
+        const f = FN[norm(e.name)]; if (!f) throw err(`Fonction « ${e.name} » inconnue`);
+        return f(...e.args.map(a => num(evalE(a, env), 'Argument de ' + e.name)));
+      }
+      case 'bin': {
+        const l = evalE(e.l, env), r = evalE(e.r, env), o = e.op;
+        if (['<', '>', '<=', '>=', '==', '!='].includes(o)) {
+          num(l, 'Comparaison'); num(r, 'Comparaison');
+          return o === '<' ? l < r : o === '>' ? l > r : o === '<=' ? l <= r : o === '>=' ? l >= r : o === '==' ? Math.abs(l - r) < 1e-9 : Math.abs(l - r) >= 1e-9;
+        }
+        if (l && r && l.$ === 'pt' && r.$ === 'pt' && (o === '+' || o === '-')) return { $: 'pt', x: o === '+' ? l.x + r.x : l.x - r.x, y: o === '+' ? l.y + r.y : l.y - r.y };
+        if (l && l.$ === 'pt' && typeof r === 'number' && (o === '*' || o === '/')) return { $: 'pt', x: o === '*' ? l.x * r : l.x / r, y: o === '*' ? l.y * r : l.y / r };
+        num(l, 'Opérande gauche'); num(r, 'Opérande droit');
+        if (o === '+') return l + r; if (o === '-') return l - r; if (o === '*') return l * r;
+        if (o === '/' || o === '%') { if (r === 0) throw err('Division par zéro'); return o === '/' ? l / r : l % r; }
+      }
+    }
+    throw err('Expression invalide');
+  }
+  function assign(env, path, v) {
+    if (path.length === 1) { setVar(env, path[0], v); return; }
+    const k0 = norm(path[0]);
+    let o = env.vars[k0];
+    if (o === undefined) { o = { $: 'rec', f: {} }; setVar(env, path[0], o); }
+    for (let i = 1; i < path.length - 1; i++) {
+      const k = norm(path[i]);
+      if (o.$ === 'pt') throw err('Un Point ne contient que x et y');
+      if (!(k in o.f)) o.f[k] = { $: 'rec', f: {} };
+      o = o.f[k];
+    }
+    const last = norm(path[path.length - 1]);
+    if (o.$ === 'pt') { if (last !== 'x' && last !== 'y') throw err('Un Point ne contient que x et y'); o[last] = num(v, 'Coordonnée'); }
+    else if (o.$ === 'rec') o.f[last] = v;
+    else throw err(`« ${path[0]} » n’est pas un enregistrement`);
+  }
+  function exec(list, env, depth) { for (const s of list) one(s, env, depth); }
+  function one(s, env, depth) {
+    CUR_LINE = s.line;
+    switch (s.t) {
+      case 'assign': {
+        const v = evalE(s.expr, env); assign(env, s.path, v);
+        info('assign', `${s.path.join('.')} ← ${fmtArg(v)}`, `Affectation : la variable « ${s.path.join('.')} » reçoit la valeur ${fmtArg(v)}. Ceci ne modifie pas l’état de la machine, seulement le lexique (les variables du programme).`, env, depth, s.line);
+        break;
+      }
+      case 'rep': {
+        const n = num(evalE(s.n, env), 'Nombre de répétitions');
+        if (!Number.isInteger(n) || n < 0 || n > 5000) throw err('Le nombre de répétitions doit être un entier entre 0 et 5000');
+        info('rep', `répéter ${n} fois`, `Début de la boucle « répéter ${n} fois » : le bloc qui suit sera exécuté ${n} fois. À la k-ième itération, la variable k vaut k (1, 2, … ${n}).`, env, depth, s.line);
+        const had = env.vars.k, hadName = env.names.k;
+        for (let k = 1; k <= n; k++) {
+          setVar(env, 'k', k);
+          info('iter', `itération k = ${k} / ${n}`, `Itération numéro ${k} sur ${n}. La variable k vaut ${k} : on peut l’utiliser dans les actions (par ex. avancer(k*10)).`, env, depth + 1, s.line, { n, k });
+          exec(s.body, env, depth + 1);
+        }
+        if (had === undefined) { delete env.vars.k; delete env.names.k; } else { env.vars.k = had; env.names.k = hadName; }
+        break;
+      }
+      case 'si': {
+        const c = !!evalE(s.cond, env);
+        info('si', `si … → ${c ? 'vrai' : 'faux'}`, `Condition évaluée : ${c ? 'VRAIE' : 'FAUSSE'}. On exécute donc ${c ? 'le bloc « alors »' : 'le bloc « sinon » (s’il existe)'}.`, env, depth, s.line);
+        exec(c ? s.th : s.el, env, depth + 1);
+        break;
+      }
+      case 'call': {
+        const k = norm(s.name), canon = NAMEMAP[k];
+        const args = s.args.map(a => evalE(a, env)).filter(v => v !== MACHINE);
+        if (canon) {
+          const a = validate(canon, args);
+          const { after, seg } = applyAction(cur, canon, a, segs, steps.length + 1);
+          push({ kind: 'machine', act: canon, args: a, label: mkLabel(canon, a), line: s.line, src: disp[s.line - 1] || '', depth, before: cur, after, seg, vars: snap(env) });
+          return;
+        }
+        const def = defs[k];
+        if (!def) throw err(`Action « ${s.name} » inconnue. Actions de la machine : ${Object.keys(ACTIONS).join(', ')}`);
+        if (depth >= MAXDEPTH) throw err('Profondeur d’appels trop grande (récursion infinie ?)');
+        if (args.length !== def.params.length) throw err(`L’action « ${def.name} » attend ${def.params.length} paramètre(s) (${def.params.join(', ') || 'aucun'}), ${args.length} fourni(s)`);
+        const ne = newEnv(); def.params.forEach((pn, i) => setVar(ne, pn, args[i]));
+        info('call', `appel ${def.name}(${args.map(fmtArg).join(', ')})`, `Appel de l’action paramétrée « ${def.name} » : ${def.params.length ? 'les paramètres ' + def.params.map((pn, i) => pn + ' = ' + fmtArg(args[i])).join(', ') + ' sont transmis' : 'aucun paramètre'}. Le corps de l’action va s’exécuter (lexique local).`, ne, depth, s.line);
+        exec(def.body, ne, depth + 1);
+        CUR_LINE = s.line;
+        info('ret', `fin de ${def.name}`, `Fin de l’action « ${def.name} » : retour au programme appelant, juste après la ligne ${s.line}.`, env, depth, s.line);
+        break;
+      }
+    }
+  }
+  exec(ast, newEnv(), 0);
+  return { steps, states, segs };
+}
+function compileSource(src, base, baseSegs, opts) {
+  const { proc, disp } = preprocess(src);
+  const { ast, defs } = parse(tokenize(proc));
+  return runProgram(ast, defs, disp, base, baseSegs, opts);
+}
+
+/* ============================================================
+   Description pédagogique d'une étape (E.I. / E.F. avec valeurs)
+   ============================================================ */
+function sigHtml(act) {
+  const A = ACTIONS[act];
+  return `<span class="kw">action</span> <span class="sg"><b>${act}</b>${A.param ? ' (' + A.param + ')' : ''}${A.alias ? ' (ou ' + A.alias + ')' : ''}</span>`;
+}
+function describe(s) {
+  const b = s.before, a = s.after, A = ACTIONS[s.act];
+  const a0 = fmtCap(b.cap), a1 = fmtCap(a.cap), s0 = fmtPt(b), s1 = fmtPt(a);
+  const base = `écran indifférent, cap = a₀ = ${a0}°, pe = p₀ = ${b.pe}, pp = s₀ = ${s0}`;
+  const x = s.args[0];
+  const d = { effet: A.effet, ei: base, ef: '', calc: [] };
+  switch (s.act) {
+    case 'vider': d.ei = `écran et plume indifférents (cap = ${a0}°, pe = ${b.pe}, pp = ${s0})`; d.ef = 'écran vide, cap = 0, pe = haute, pp = (0 ; 0)'; break;
+    case 'lever': d.ef = `écran inchangé, cap = a₀ = ${a0}°, pe = haute, pp = s₀ = ${s0}`; break;
+    case 'baisser': d.ef = `écran inchangé, cap = a₀ = ${a0}°, pe = basse, pp = s₀ = ${s0}`; break;
+    case 'avancer': case 'reculer': {
+      const sign = s.act === 'avancer' ? 1 : -1, dir = fmtCap(b.cap + (s.act === 'reculer' ? 180 : 0) + (x < 0 ? 180 : 0));
+      d.ei = base + `, x = x₀ = ${fmt(x)}`;
+      d.ef = b.pe === 'basse'
+        ? `p₀ = basse → un segment de longueur ${fmt(Math.abs(x))} est tracé de s₀ = ${s0} à s₁ = ${s1} (direction ${dir}°). cap = ${a1}°, pe = basse, pp = s₁ = ${s1}`
+        : `p₀ = haute → écran inchangé (la plume se déplace sans écrire) de s₀ = ${s0} à s₁ = ${s1}. cap = ${a1}°, pe = haute, pp = s₁ = ${s1}`;
+      const sg = sign < 0 ? ' −' : ' +';
+      d.calc = [`x₁ = x₀${sg} x·cos(a₀) = ${fmt(b.x)}${sg} ${fmt(x)}·cos(${a0}°) = ${fmt(a.x)}`, `y₁ = y₀${sg} x·sin(a₀) = ${fmt(b.y)}${sg} ${fmt(x)}·sin(${a0}°) = ${fmt(a.y)}`];
+      break;
+    }
+    case 'positionner':
+      d.ei = base + `, x = x₀ = ${fmtPt(x)}`;
+      d.ef = b.pe === 'basse' ? `p₀ = basse → un segment est tracé du point s₀ = ${s0} au point x₀ = ${s1}. cap = ${a1}°, pe = basse, pp = ${s1}`
+        : `p₀ = haute → écran inchangé. cap = ${a1}°, pe = haute, pp = x₀ = ${s1}`;
+      d.calc = [`longueur du déplacement = √((Δx)²+(Δy)²) = ${fmt(Math.hypot(a.x - b.x, a.y - b.y))}`];
+      break;
+    case 'gauche': d.ei = base + `, x = ${fmt(x)}`; d.ef = `écran inchangé, cap = a₀ + x₀ = ${a0} + ${fmt(x)} = ${a1}°, pe = ${b.pe}, pp = ${s0}`; d.calc = [`rotation de ${fmt(x)}° vers la gauche (sens trigonométrique)`]; break;
+    case 'droite': d.ei = base + `, x = ${fmt(x)}`; d.ef = `écran inchangé, cap = a₀ − x₀ = ${a0} − ${fmt(x)} = ${a1}°, pe = ${b.pe}, pp = ${s0}`; d.calc = [`rotation de ${fmt(x)}° vers la droite (sens horaire)`]; break;
+    case 'diriger': d.ei = base + `, x = ${fmt(x)}`; d.ef = `écran inchangé, cap = x₀ = ${a1}°, pe = ${b.pe}, pp = ${s0}`; break;
+    case 'couleur': d.ei = `écran indifférent, couleur actuelle = ${b.color || 'auto'}`; d.ef = `écran inchangé, couleur = ${x.name}`; break;
+    case 'epaisseur': d.ei = `écran indifférent, épaisseur actuelle = ${b.width ? fmt(b.width) : 'défaut'}`; d.ef = `écran inchangé, épaisseur = ${fmt(x)} px`; break;
+  }
+  return d;
+}
+
+/* ============================================================
+   Exemples
+   ============================================================ */
+const EXAMPLES = [
+  { title: 'Que fait cet algorithme ? ', tag: 'Cours', desc: 'Utilisation de la machine-tracés : observez les états intermédiaires dans le journal. Une plume baissée trace, la plume levée se déplace en silence.',
+    code: `// Algorithme principal — 
+m.vider
+m.droite(120)
+m.baisser
+m.av(50)
+m.re(50)
+m.gauche(60)
+m.av(50)
+m.re(50)
+m.lever
+m.dir(0)
+` },
+  { title: 'Carré écrit « à la main » ', tag: 'Cours', desc: 'Les 4 côtés sont écrits un par un : 8 actions identiques, deux par deux.',
+    code: `// Carré de côté lc, sens trigonométrique, depuis s dans la direction a
+s ← <-60,-60>
+lc ← 120
+a ← 0
+m.vider
+m.lever
+m.positionner(s)
+m.diriger(a)
+m.baisser
+m.avancer(lc)   // 1er côté
+m.gauche(90)
+m.avancer(lc)   // 2e côté
+m.gauche(90)
+m.avancer(lc)   // 3e côté
+m.gauche(90)
+m.avancer(lc)   // 4e côté
+m.gauche(90)
+m.lever
+` },
+  { title: 'Mise en facteur : répéter 4 fois ', tag: 'Cours', desc: 'Même carré, mais les instructions répétées sont factorisées dans une boucle. La variable k est le numéro de l’itération.',
+    code: `// Simplification d'écriture
+m.vider
+m.lever
+m.positionner(<-60,-60>)
+m.diriger(0)
+m.baisser
+répéter 4 fois
+  m.avancer(120)
+  m.gauche(90)
+frépéter
+m.lever
+` },
+  { title: 'Action paramétrée tracerCarré ', tag: 'Cours', desc: 'Un Carré est caractérisé par un sommet s, une longueur lc et une orientation a. L’action est écrite avec la syntaxe du cours, puis utilisée deux fois (carré extérieur et carré intérieur).',
+    code: `action tracerCarré(consulté x : Carré, modifié m : Machine-tracés)
+  // Effet : trace le carré x dans le sens trigonométrique
+  m.lever ; m.positionner(x.s)
+  m.diriger(x.a) ; m.baisser
+  répéter 4 fois
+    m.avancer(x.lc)
+    m.gauche(90)
+  frépéter
+  m.lever
+fin algorithme de tracerCarré
+
+// Algorithme principal
+tc ← 160
+s ← <-80,-80>
+a ← 0
+m.vider
+ce.s ← s ; ce.lc ← tc ; ce.a ← a
+tracerCarré(ce, m)
+ci.s ← s ; ci.lc ← tc/2 ; ci.a ← a
+tracerCarré(ci, m)
+` },
+  { title: 'Action dépendante du contexte ', tag: 'Cours', desc: 'Le carré est tracé à partir de la position et du cap courants de la plume : le seul paramètre est la longueur du côté.',
+    code: `action carréCourant(lc)
+  répéter 4 fois
+    m.avancer(lc)
+    m.gauche(90)
+  frépéter
+faction
+
+m.vider
+m.positionner(<-100,-60>)
+m.baisser
+carréCourant(120)
+m.lever
+m.positionner(<20,20>)
+m.droite(30)
+m.baisser
+carréCourant(70)
+` },
+  { title: 'Rosace de carrés', tag: 'Boucles', desc: 'Un carré, puis rotation de 10°, répété 36 fois. La couleur dépend de k.',
+    code: `m.vider
+m.baisser
+répéter 36 fois
+  m.couleur(k*10)
+  répéter 4 fois
+    m.avancer(100)
+    m.gauche(90)
+  frépéter
+  m.gauche(10)
+frépéter
+` },
+  { title: 'Polygone régulier paramétré', tag: 'Actions', desc: 'Le polygone à n côtés tourne de 360/n degrés à chaque sommet.',
+    code: `action polygone(n, c)
+  répéter n fois
+    m.avancer(c)
+    m.gauche(360/n)
+  frépéter
+faction
+
+m.vider
+m.baisser
+m.couleur("bleu")
+polygone(3, 120)
+m.couleur("rouge")
+polygone(5, 80)
+m.couleur("vert")
+polygone(8, 45)
+` },
+  { title: 'Étoile à 5 branches', tag: 'Boucles', desc: 'Avancer de 160 puis tourner à droite de 144° : 5 fois.',
+    code: `m.vider
+m.positionner(<-90,40>)
+m.couleur("orange")
+m.epaisseur(4)
+m.baisser
+répéter 5 fois
+  m.avancer(180)
+  m.droite(144)
+frépéter
+` },
+  { title: 'Spirale carrée', tag: 'Boucles', desc: 'La longueur du côté grandit avec k.',
+    code: `m.vider
+m.baisser
+m.couleur("violet")
+répéter 45 fois
+  m.avancer(k*5)
+  m.gauche(90)
+frépéter
+` },
+  { title: 'Maison (positionner + diriger)', tag: 'Mixte', desc: 'Dessin composé : corps, toit et porte, avec la plume levée entre les parties.',
+    code: `m.vider
+m.epaisseur(3)
+// Corps
+m.positionner(<-80,-80>)
+m.diriger(0)
+m.couleur("bleu")
+m.baisser
+répéter 4 fois
+  m.avancer(160)
+  m.gauche(90)
+frépéter
+// Toit
+m.lever
+m.positionner(<-80,80>)
+m.couleur("rouge")
+m.diriger(45)
+m.baisser
+m.avancer(113.14)
+m.droite(90)
+m.avancer(113.14)
+// Porte
+m.lever
+m.positionner(<-20,-80>)
+m.diriger(90)
+m.couleur("marron")
+m.baisser
+m.avancer(70)
+m.droite(90)
+m.avancer(40)
+m.droite(90)
+m.avancer(70)
+` },
+  { title: 'Courbe de Koch (récursion)', tag: 'Avancé', desc: 'Une action qui s’appelle elle-même avec une condition d’arrêt (si … alors … sinon). Ordre 3.',
+    code: `action koch(n, l)
+  si n = 0 alors
+    m.avancer(l)
+  sinon
+    koch(n-1, l/3)
+    m.gauche(60)
+    koch(n-1, l/3)
+    m.droite(120)
+    koch(n-1, l/3)
+    m.gauche(60)
+    koch(n-1, l/3)
+  fsi
+faction
+
+m.vider
+m.positionner(<-160,-60>)
+m.couleur("cyan")
+m.baisser
+koch(3, 320)
+` }
+];
+
+/* ============================================================
+   Options
+   ============================================================ */
+const OPT_DEFS = { speed: 5, anim: true, gap: 250, control: true, angleCheck: true, restart: true, shortNames: false, writeEditor: true,
+  theme: 'paper', grid: true, axes: true, ticks: true, ink: '', width: 2.5, turtle: true, turtleSize: 13, heading: true, ghost: true,
+  vertices: false, numbers: false, hud: true, zoom: 1 };
+let OPT = { ...OPT_DEFS };
+try { Object.assign(OPT, JSON.parse(localStorage.getItem('mt-opts') || '{}')); } catch (e) {}
+OPT.zoom = 1;
+const THEMES = {
+  paper: { bg: '#fbfcfe', grid: 'rgba(30,41,59,.08)', axis: 'rgba(30,41,59,.38)', ink: '#111827', text: '#64748b', ghost: 'rgba(100,116,139,.6)' },
+  chalk: { bg: '#10141f', grid: 'rgba(255,255,255,.07)', axis: 'rgba(255,255,255,.35)', ink: '#f1f5f9', text: '#94a3b8', ghost: 'rgba(148,163,184,.6)' },
+  blueprint: { bg: '#0b3a6e', grid: 'rgba(255,255,255,.14)', axis: 'rgba(255,255,255,.5)', ink: '#e0f2fe', text: '#9bc4ea', ghost: 'rgba(186,230,253,.6)' },
+  mint: { bg: '#eefaf3', grid: 'rgba(6,78,59,.1)', axis: 'rgba(6,78,59,.4)', ink: '#064e3b', text: '#4d7c6a', ghost: 'rgba(5,150,105,.55)' }
+};
+const view = { cx: 0, cy: 0, zoom: 1 };
+function saveOpts() { try { const o = { ...OPT }; delete o.zoom; localStorage.setItem('mt-opts', JSON.stringify(o)); } catch (e) {} }
+
+/* ============================================================
+   Chronologie (timeline) et lecture
+   ============================================================ */
+let TL = { id: 0, steps: [], states: [INIT()], segs: [] };
+const PL = { pos: 0, playing: false, anim: null, nextAt: 0 };
+let dirty = true, pipeMode = 'edit', pipeTimer = 0, ERR_LINE = 0;
+const speedFactor = () => Math.pow(2, (OPT.speed - 5) / 2);
+
+function stepDuration(s) {
+  if (!OPT.anim) return 1;
+  let d = 260;
+  if (s.kind === 'machine') {
+    const b = s.before, a = s.after;
+    switch (s.act) {
+      case 'vider': d = 600; break;
+      case 'lever': case 'baisser': case 'couleur': case 'epaisseur': d = 320; break;
+      case 'avancer': case 'reculer': case 'positionner': d = 280 + Math.min(Math.hypot(a.x - b.x, a.y - b.y), 500) * 2.2; break;
+      case 'gauche': case 'droite': case 'diriger': d = 280 + Math.min(Math.abs(a.cap - b.cap), 360) * 1.6; break;
+    }
+  }
+  return Math.max(1, d / speedFactor());
+}
+function startAnim(i) {
+  const s = TL.steps[i]; if (!s) return;
+  PL.anim = { i, t0: performance.now(), dur: stepDuration(s) };
+  setPipe('exec'); syncAll();
+}
+function finishAnim() {
+  if (!PL.anim) return;
+  PL.pos = PL.anim.i + 1; PL.anim = null;
+  setPipe('draw'); syncAll();
+}
+function goTo(n) {
+  PL.anim = null; PL.pos = Math.max(0, Math.min(TL.steps.length, n));
+  setPipe(PL.pos ? 'draw' : 'edit'); syncAll();
+}
+function next() { PL.playing = false; finishAnim(); if (PL.pos < TL.steps.length) startAnim(PL.pos); syncAll(); }
+function prev() { PL.playing = false; goTo((PL.anim ? PL.anim.i : PL.pos) - 1); }
+function play() {
+  if (PL.playing) { PL.playing = false; syncAll(); return; }
+  if (!TL.steps.length) { toast('Aucune étape : exécutez un programme ou une commande.', 'warn'); return; }
+  finishAnim();
+  if (PL.pos >= TL.steps.length) goTo(0);
+  PL.playing = true; PL.nextAt = 0; syncAll();
+}
+function setPipe(m) {
+  pipeMode = m; $$('.pstep').forEach(e => e.classList.toggle('on', e.dataset.p === m));
+  clearTimeout(pipeTimer);
+  if (m === 'parse') pipeTimer = setTimeout(() => setPipe(PL.anim ? 'exec' : 'edit'), 600);
+}
+
+function loop(now) {
+  if (PL.anim) {
+    if (now - PL.anim.t0 >= PL.anim.dur) { finishAnim(); PL.nextAt = now + OPT.gap; }
+  } else if (PL.playing) {
+    if (PL.pos >= TL.steps.length) { PL.playing = false; syncAll(); }
+    else if (now >= PL.nextAt) startAnim(PL.pos);
+  }
+  if (dirty || PL.anim) { render(now); dirty = false; }
+  requestAnimationFrame(loop);
+}
+function live(now) {
+  const st = TL.states[PL.pos] || TL.states[TL.states.length - 1];
+  if (!PL.anim) return { ...st, step: null, t: 1, e: 1 };
+  const { i, t0, dur } = PL.anim, step = TL.steps[i], b = step.before, a = step.after;
+  const t = Math.min(1, (now - t0) / dur), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const r = { ...b, step, t, e };
+  r.x = b.x + (a.x - b.x) * e; r.y = b.y + (a.y - b.y) * e;
+  if (step.act === 'diriger') { let d = ((a.cap - b.cap) % 360 + 360) % 360; if (d > 180) d -= 360; r.cap = b.cap + d * e; }
+  else r.cap = b.cap + (a.cap - b.cap) * e;
+  r.pe = e >= .5 ? a.pe : b.pe;
+  return r;
+}
+
+/* ============================================================
+   Rendu de l'écran
+   ============================================================ */
+const cv = $('#screen'), cx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+function resize() { const r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); dirty = true; }
+new ResizeObserver(resize).observe(cv);
+const X = x => W / 2 + (x - view.cx) * view.zoom, Y = y => H / 2 - (y - view.cy) * view.zoom;
+const toWorld = (px, py) => ({ x: (px - W / 2) / view.zoom + view.cx, y: -(py - H / 2) / view.zoom + view.cy });
+
+function drawGrid(th) {
+  const z = view.zoom, g = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000].find(s => s * z >= 48) || 10000;
+  const x0 = view.cx - W / 2 / z, x1 = view.cx + W / 2 / z, y0 = view.cy - H / 2 / z, y1 = view.cy + H / 2 / z;
+  if (OPT.grid) {
+    cx.strokeStyle = th.grid; cx.lineWidth = 1; cx.beginPath();
+    for (let x = Math.ceil(x0 / g) * g; x <= x1; x += g) { const px = Math.round(X(x)) + .5; cx.moveTo(px, 0); cx.lineTo(px, H); }
+    for (let y = Math.ceil(y0 / g) * g; y <= y1; y += g) { const py = Math.round(Y(y)) + .5; cx.moveTo(0, py); cx.lineTo(W, py); }
+    cx.stroke();
+  }
+  if (OPT.axes) {
+    cx.strokeStyle = th.axis; cx.lineWidth = 1.2; cx.beginPath();
+    const ox = Math.round(X(0)) + .5, oy = Math.round(Y(0)) + .5;
+    cx.moveTo(ox, 0); cx.lineTo(ox, H); cx.moveTo(0, oy); cx.lineTo(W, oy); cx.stroke();
+    cx.fillStyle = th.text; cx.font = '11px "JetBrains Mono",monospace';
+    cx.fillText('x', W - 14, Math.min(Math.max(oy - 6, 12), H - 4)); cx.fillText('y', Math.min(Math.max(ox + 6, 4), W - 12), 12);
+    if (OPT.ticks) {
+      cx.textAlign = 'center';
+      for (let x = Math.ceil(x0 / g) * g; x <= x1; x += g) if (Math.abs(x) > 1e-9) cx.fillText(fmt(x, 0), X(x), Math.min(Math.max(oy + 14, 14), H - 4));
+      cx.textAlign = 'right';
+      for (let y = Math.ceil(y0 / g) * g; y <= y1; y += g) if (Math.abs(y) > 1e-9) cx.fillText(fmt(y, 0), Math.min(Math.max(ox - 5, 26), W - 4), Y(y) + 4);
+      cx.textAlign = 'left';
+    }
+  }
+}
+function drawSeg(s, ink, th, tx, ty) {
+  const x2 = tx === undefined ? s.x2 : tx, y2 = ty === undefined ? s.y2 : ty;
+  if (s.down) {
+    cx.strokeStyle = s.color || OPT.ink || ink; cx.lineWidth = s.width || OPT.width; cx.lineCap = 'round'; cx.setLineDash([]);
+  } else {
+    if (!OPT.ghost) return;
+    cx.strokeStyle = th.ghost; cx.lineWidth = 1; cx.setLineDash([5, 5]);
+  }
+  cx.beginPath(); cx.moveTo(X(s.x1), Y(s.y1)); cx.lineTo(X(x2), Y(y2)); cx.stroke(); cx.setLineDash([]);
+}
+function rr(x, y, w, h, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
+
+function render(now) {
+  const th = THEMES[OPT.theme] || THEMES.paper, ink = th.ink, L = live(now), step = L.step;
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.fillStyle = th.bg; cx.fillRect(0, 0, W, H);
+  drawGrid(th);
+  const st0 = TL.states[PL.pos];
+  cx.globalAlpha = step && step.act === 'vider' ? 1 - L.e : 1;
+  for (let i = st0.segStart; i < st0.segEnd; i++) {
+    const s = TL.segs[i]; drawSeg(s, ink, th);
+    if (s.down) {
+      if (OPT.vertices) { cx.fillStyle = s.color || OPT.ink || ink; cx.beginPath(); cx.arc(X(s.x1), Y(s.y1), 3, 0, 7); cx.arc(X(s.x2), Y(s.y2), 3, 0, 7); cx.fill(); }
+      if (OPT.numbers) {
+        const mx = X((s.x1 + s.x2) / 2), my = Y((s.y1 + s.y2) / 2);
+        cx.fillStyle = 'rgba(124,92,255,.92)'; cx.beginPath(); cx.arc(mx, my, 9, 0, 7); cx.fill();
+        cx.fillStyle = '#fff'; cx.font = '600 10px "JetBrains Mono",monospace'; cx.textAlign = 'center'; cx.fillText(s.no, mx, my + 3.5); cx.textAlign = 'left';
+      }
+    }
+  }
+  cx.globalAlpha = 1;
+  if (step && step.seg) drawSeg(step.seg, ink, th, L.x, L.y);
+  // arc de rotation
+  if (step && ['gauche', 'droite', 'diriger'].includes(step.act)) {
+    const a0 = rad(step.before.cap), a1 = rad(L.cap);
+    cx.fillStyle = 'rgba(124,92,255,.22)'; cx.strokeStyle = 'rgba(124,92,255,.85)'; cx.lineWidth = 1.5;
+    cx.beginPath(); cx.moveTo(X(L.x), Y(L.y)); cx.arc(X(L.x), Y(L.y), 38, -a0, -a1, L.cap > step.before.cap); cx.closePath(); cx.fill(); cx.stroke();
+  }
+  // plume
+  if (OPT.turtle) {
+    const px = X(L.x), py = Y(L.y), sz = OPT.turtleSize, ang = -rad(L.cap);
+    if (OPT.heading) {
+      cx.strokeStyle = 'rgba(37,99,235,.55)'; cx.setLineDash([4, 4]); cx.lineWidth = 1.2; cx.beginPath(); cx.moveTo(px, py);
+      cx.lineTo(px + Math.cos(ang) * 78, py + Math.sin(ang) * 78); cx.stroke(); cx.setLineDash([]);
+      cx.fillStyle = '#2563eb'; cx.font = '600 11px "JetBrains Mono",monospace';
+      cx.fillText(fmtCap(L.cap) + '°', px + Math.cos(ang) * 84 + (Math.cos(ang) < 0 ? -30 : 4), py + Math.sin(ang) * 84 + 4);
+    }
+    cx.save(); cx.translate(px, py); cx.rotate(ang);
+    cx.shadowColor = 'rgba(37,99,235,.55)'; cx.shadowBlur = 10;
+    cx.beginPath(); cx.moveTo(sz, 0); cx.lineTo(-sz * .7, sz * .62); cx.lineTo(-sz * .35, 0); cx.lineTo(-sz * .7, -sz * .62); cx.closePath();
+    if (L.pe === 'basse') { cx.fillStyle = '#2563eb'; cx.fill(); } else { cx.fillStyle = '#fff'; cx.fill(); }
+    cx.shadowBlur = 0; cx.lineWidth = 2; cx.strokeStyle = '#2563eb'; cx.stroke();
+    cx.restore();
+  }
+  // étiquette d'action
+  if (OPT.hud) {
+    const s = step || (PL.pos > 0 ? TL.steps[PL.pos - 1] : null);
+    if (s) {
+      const txt = `#${s.i + 1}  ${s.label}`; cx.font = '600 12.5px "JetBrains Mono",monospace';
+      const w = cx.measureText(txt).width + 22;
+      cx.fillStyle = step ? 'rgba(124,92,255,.95)' : 'rgba(15,23,42,.8)'; rr(12, 12, w, 28, 9); cx.fill();
+      cx.fillStyle = '#fff'; cx.fillText((step ? '▶ ' : '') + txt, 22, 31);
+    }
+  }
+  updateLive(L);
+}
+
+/* ============================================================
+   Panneaux d'information
+   ============================================================ */
+const lastTxt = {};
+function setTxt(id, v) { if (lastTxt[id] !== v) { lastTxt[id] = v; $('#' + id).textContent = v; } }
+function updateLive(L) {
+  setTxt('stCap', fmtCap(L.cap) + '°');
+  setTxt('stPp', fmtPt(L));
+  const pe = $('#stPe'); if (pe.textContent !== L.pe) { pe.textContent = L.pe; pe.className = 'pill ' + L.pe; }
+  $('#needle').setAttribute('transform', `rotate(${-L.cap} 50 50)`);
+  const base = TL.states[PL.pos]; let n = base.nDown;
+  if (L.step && L.step.seg && L.step.seg.down) n += L.e > 0 ? 1 : 0;
+  setTxt('stEcran', L.step && L.step.act === 'vider' && L.e > .5 ? 'vide' : (n ? `${n} segment${n > 1 ? 's' : ''} tracé${n > 1 ? 's' : ''}` : 'vide'));
+  const th = THEMES[OPT.theme] || THEMES.paper;
+  $('#stColor').style.background = base.color || OPT.ink || th.ink;
+  setTxt('stWidth', fmt(base.width || OPT.width));
+  const bd = $('#stBadge'); const txt = PL.anim ? 'en cours…' : 'temps réel';
+  if (bd.textContent !== txt) { bd.textContent = txt; bd.className = 'badge' + (PL.anim ? ' run' : ''); }
+}
+function syncActionPanel() {
+  const step = PL.anim ? TL.steps[PL.anim.i] : (PL.pos > 0 ? TL.steps[PL.pos - 1] : null);
+  const box = $('#actBody'), bd = $('#actBadge');
+  if (!step) {
+    bd.textContent = '—'; bd.className = 'badge';
+    box.innerHTML = '<p class="hint" style="margin:0">Aucune action exécutée. Cliquez sur une commande, ou lancez un programme : chaque action sera expliquée ici avec ses <b>états initial (E.I.)</b> et <b>final (E.F.)</b> calculés avec les vraies valeurs.</p>';
+    return;
+  }
+  bd.textContent = PL.anim ? 'en cours' : 'terminée'; bd.className = 'badge ' + (PL.anim ? 'run' : 'ok');
+  let h = `<div class="a-title"><span class="a-idx">#${step.i + 1}</span><code>${esc(step.label)}</code></div>`;
+  if (step.line) h += `<div class="a-src">ligne ${step.line} : <code>${esc(step.src)}</code></div>`;
+  else if (step.manual) h += `<div class="a-src">commande manuelle</div>`;
+  if (step.kind === 'info') {
+    h += `<div class="spec"><span class="cm"><b>Étape de contrôle</b></span><span class="cm">${esc(step.text)}</span></div>`;
+  } else {
+    const d = describe(step);
+    h += `<div class="spec">${sigHtml(step.act)}<span class="cm">// <b>Effet</b> : ${esc(d.effet)}</span><span class="cm">// <b>E.I.</b> : ${esc(d.ei)}</span><span class="cm">// <b>E.F.</b> : ${esc(d.ef)}</span></div>`;
+    if (d.calc.length) h += `<div class="calc">${d.calc.map(esc).join('<br>')}</div>`;
+    if (ACTIONS[step.act].ext) h += `<p class="hint" style="margin:8px 0 0">Action ajoutée par l’application (hors cours).</p>`;
+  }
+  box.innerHTML = h;
+  // variables
+  const vb = $('#varsBox');
+  vb.innerHTML = step.vars && step.vars.length ? step.vars.map(([n, v]) => `<span class="var"><b>${esc(n)}</b> = ${esc(v)}</span>`).join('') : '<span class="hint">Aucune variable pour l’instant.</span>';
+}
+const J = { tl: -1, count: 0, hl: null };
+function rowHtml(i, s, st) {
+  const lab = s ? esc(s.label) : 'état initial';
+  const pad = s ? 6 + s.depth * 9 : 6;
+  return `<td>${i}</td><td class="lab" style="padding-left:${pad}px" title="${lab}">${lab}</td><td>${fmtCap(st.cap)}°</td><td>${st.pe === 'haute' ? 'H' : 'B'}</td><td>${fmtPt(st)}</td><td>${st.nDown || '·'}</td>`;
+}
+function syncJournal() {
+  const tb = $('#jbody');
+  if (J.tl !== TL.id) { tb.innerHTML = ''; J.tl = TL.id; J.count = 0; J.hl = null;
+    const r = document.createElement('tr'); r.dataset.i = 0; r.innerHTML = rowHtml(0, null, TL.states[0]); tb.appendChild(r); }
+  const target = PL.pos + (PL.anim ? 1 : 0);
+  let added = false;
+  while (J.count < target) {
+    const s = TL.steps[J.count]; const r = document.createElement('tr'); r.dataset.i = J.count + 1;
+    if (s.kind === 'info') r.className = 'info'; r.innerHTML = rowHtml(J.count + 1, s, s.after); tb.appendChild(r); J.count++; added = true;
+  }
+  while (J.count > target) { tb.lastChild.remove(); J.count--; }
+  if (J.hl) J.hl.classList.remove('cur', 'live');
+  const el = tb.children[target]; J.hl = el || null;
+  if (el) el.classList.add(PL.anim ? 'live' : 'cur');
+  setTxt('jBadge', String(target));
+  if (added || PL.anim) { const w = $('#jwrap'); w.scrollTop = w.scrollHeight; }
+}
+function syncTransport() {
+  const sc = $('#scrub'); sc.max = TL.steps.length; sc.value = PL.pos;
+  setTxt('stepCount', `Étape ${PL.pos + (PL.anim ? 1 : 0)} / ${TL.steps.length}`);
+  $('#bPlay').innerHTML = PL.playing ? '⏸ Pause' : '▶ Lecture';
+  $('#bPrev').disabled = $('#bReset').disabled = PL.pos === 0 && !PL.anim;
+  $('#bNext').disabled = $('#bEnd').disabled = PL.pos >= TL.steps.length && !PL.anim;
+}
+const LH = 22, PAD = 10;
+function placeBar(el, line) {
+  const ta = $('#src');
+  if (!line) { el.style.display = 'none'; return; }
+  el.style.display = 'block'; el.style.top = (PAD + (line - 1) * LH - ta.scrollTop) + 'px';
+}
+function syncEditorOverlay() {
+  const ta = $('#src');
+  $('#gutterInner').style.transform = `translateY(${-ta.scrollTop}px)`;
+  const step = PL.anim ? TL.steps[PL.anim.i] : (PL.pos > 0 ? TL.steps[PL.pos - 1] : null);
+  const line = step && step.line && !step.manual ? step.line : 0;
+  placeBar($('#hlBar'), line); placeBar($('#errBar'), ERR_LINE);
+  if (line && (PL.anim || PL.playing)) {
+    const top = (line - 1) * LH;
+    if (top < ta.scrollTop || top + LH + PAD > ta.scrollTop + ta.clientHeight) { ta.scrollTop = Math.max(0, top - ta.clientHeight / 2); }
+  }
+}
+function syncGutter() {
+  const n = $('#src').value.split('\n').length; const g = $('#gutterInner');
+  if (g.childElementCount !== n) { let h = ''; for (let i = 1; i <= n; i++) h += `<div>${i}</div>`; g.innerHTML = h; }
+}
+function syncAll() { syncTransport(); syncJournal(); syncActionPanel(); syncEditorOverlay(); dirty = true; }
+
+/* ============================================================
+   Compilation / exécution d'un programme
+   ============================================================ */
+function showError(e) {
+  const box = $('#errBox'); ERR_LINE = e.line || 0;
+  box.style.display = 'block';
+  box.innerHTML = `<b>${ERR_LINE ? 'Ligne ' + ERR_LINE + ' : ' : ''}</b>${esc(e.message)}`;
+  syncEditorOverlay(); openTab('prog');
+}
+function clearError() { ERR_LINE = 0; $('#errBox').style.display = 'none'; }
+function runSource(autoplay) {
+  const src = $('#src').value; setPipe('parse');
+  const useBase = OPT.restart;
+  const base = useBase ? INIT() : TL.states[PL.pos], baseSegs = useBase ? [] : TL.segs;
+  let res;
+  try { res = compileSource(src, base, baseSegs, { control: OPT.control, angleCheck: OPT.angleCheck }); }
+  catch (e) {
+    if (e instanceof MTError) { showError(e); return; }
+    console.error(e); showError({ message: 'Erreur interne : ' + e.message, line: 0 }); return;
+  }
+  clearError();
+  if (!res.steps.length) { toast('Le programme ne contient aucune action.', 'warn'); return; }
+  TL = { id: TL.id + 1, steps: res.steps, states: res.states, segs: res.segs };
+  PL.pos = 0; PL.anim = null; PL.playing = autoplay; PL.nextAt = 0;
+  setPipe('parse'); syncAll();
+  toast(`Programme analysé : ${res.steps.length} étapes`);
+}
+function resetMachine() {
+  TL = { id: TL.id + 1, steps: [], states: [INIT()], segs: [] };
+  PL.pos = 0; PL.anim = null; PL.playing = false; clearError(); setPipe('edit'); syncAll();
+}
+function truncateTL(pos) {
+  TL.steps.length = pos; TL.states.length = pos + 1; TL.segs.length = TL.states[pos].segEnd;
+}
+function lineFor(act, args) {
+  const A = ACTIONS[act], nm = OPT.shortNames && A.alias ? A.alias : act;
+  if (act === 'positionner') return `m.${nm}(${args[0]}, ${args[1]})`;
+  if (act === 'couleur') return `m.${nm}("${args[0]}")`;
+  return args.length ? `m.${nm}(${args.join(', ')})` : `m.${nm}`;
+}
+function manualAction(act, rawArgs) {
+  PL.playing = false; finishAnim();
+  CUR_LINE = 0; CUR_OPTS = { angleCheck: OPT.angleCheck };
+  let a;
+  const vArgs = act === 'couleur' ? rawArgs : rawArgs;
+  try { a = validate(act, vArgs); } catch (e) { toast(e.message, 'bad'); return false; }
+  const had = TL.steps.length > PL.pos;
+  truncateTL(PL.pos); if (had) toast('Les étapes suivantes du programme chargé ont été abandonnées.', 'warn');
+  const st = TL.states[PL.pos];
+  const { after, seg } = applyAction(st, act, a, TL.segs, PL.pos + 1);
+  const step = { kind: 'machine', act, args: a, label: mkLabel(act, a), line: 0, src: '', depth: 0, before: st, after, seg, vars: [], manual: true, i: PL.pos };
+  TL.steps.push(step); TL.states.push(after);
+  if (OPT.writeEditor) {
+    const ta = $('#src'); if (ta.value && !ta.value.endsWith('\n')) ta.value += '\n';
+    ta.value += lineFor(act, vArgs) + '\n'; syncGutter(); try { localStorage.setItem('mt-src', ta.value); } catch (e) {}
+    ta.scrollTop = ta.scrollHeight;
+  }
+  startAnim(PL.pos); return true;
+}
+
+/* ============================================================
+   Interface : commandes manuelles
+   ============================================================ */
+const ACT_GROUPS = [
+  { title: 'Modification globale de l’écran et de la plume', items: ['vider'] },
+  { title: 'Position d’écriture de la plume', items: ['lever', 'baisser'] },
+  { title: 'Plume dans le plan', items: ['avancer', 'reculer', 'positionner'] },
+  { title: 'Modification du cap', items: ['gauche', 'droite', 'diriger'] },
+  { title: 'Style du trait (extension)', items: ['couleur', 'epaisseur'] }
+];
+const ACT_UI = {
+  avancer: { inputs: [{ k: 'x', def: 50, min: -1000, max: 1000 }], chips: [10, 25, 50, 100, 150, -50] },
+  reculer: { inputs: [{ k: 'x', def: 50, min: -1000, max: 1000 }], chips: [10, 25, 50, 100, 150] },
+  positionner: { inputs: [{ k: 'x', def: 0 }, { k: 'y', def: 0 }], chips: [] },
+  gauche: { inputs: [{ k: 'x', def: 90, min: -360, max: 360 }], slider: true, chips: [15, 30, 45, 60, 90, 120, 180] },
+  droite: { inputs: [{ k: 'x', def: 90, min: -360, max: 360 }], slider: true, chips: [15, 30, 45, 60, 90, 120, 180] },
+  diriger: { inputs: [{ k: 'x', def: 0, min: -360, max: 360 }], slider: true, chips: [0, 45, 90, 135, 180, 270] },
+  couleur: { color: true },
+  epaisseur: { inputs: [{ k: 'e', def: 3, min: 1, max: 30 }], chips: [1, 3, 6, 10] }
+};
+function buildCommands() {
+  let h = '';
+  for (const g of ACT_GROUPS) {
+    h += `<h3 class="grp">${g.title}</h3><div class="acts">`;
+    for (const name of g.items) {
+      const A = ACTIONS[name], U = ACT_UI[name] || {};
+      h += `<div class="act" data-act="${name}"><div class="act-head"><span class="act-name">${name}</span>${A.alias ? `<span class="alias">${A.alias}</span>` : ''}${A.ext ? '<span class="ext">extension</span>' : ''}</div>
+        <div class="act-sig">${A.param ? '(' + A.param + ')' : '(aucun paramètre)'}</div><div class="act-ctl">`;
+      (U.inputs || []).forEach(i => { h += `<label class="field">${i.k}<input type="number" data-k="${i.k}" value="${i.def}" ${i.min !== undefined ? `min="${i.min}" max="${i.max}"` : ''} step="any"></label>`; });
+      if (U.color) h += `<label class="field">couleur <input type="color" data-k="c" value="#e11d48"></label>`;
+      h += `<button class="btn primary sm run" id="run-${name}">▶ Exécuter</button></div>`;
+      if (U.slider) h += `<div class="slider-row"><span class="hint">−360</span><input type="range" min="-360" max="360" step="1" value="${U.inputs[0].def}" data-sl><span class="hint">360</span></div>`;
+      if (U.chips && U.chips.length) h += `<div class="chips">${U.chips.map(c => `<span class="chip" data-chip="${c}">${c}${U.slider ? '°' : ''}</span>`).join('')}</div>`;
+      h += `<p class="act-desc">${A.desc}</p></div>`;
+    }
+    h += '</div>';
+  }
+  $('#cmdList').innerHTML = h;
+  $('#cmdList').addEventListener('click', e => {
+    const card = e.target.closest('.act'); if (!card) return;
+    const name = card.dataset.act;
+    if (e.target.closest('.run')) return execCard(card, name);
+    const chip = e.target.closest('.chip');
+    if (chip) { const inp = card.querySelector('input[type=number]'); inp.value = chip.dataset.chip; syncSlider(card); if (ACT_UI[name].slider || ACT_UI[name].chips) execCard(card, name); }
+  });
+  $('#cmdList').addEventListener('input', e => {
+    const card = e.target.closest('.act'); if (!card) return;
+    if (e.target.matches('[data-sl]')) card.querySelector('input[type=number]').value = e.target.value;
+  });
+  $('#cmdList').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input')) { const c = e.target.closest('.act'); execCard(c, c.dataset.act); } });
+}
+function syncSlider(card) { const s = card.querySelector('[data-sl]'); if (s) s.value = card.querySelector('input[type=number]').value; }
+function execCard(card, name) {
+  const U = ACT_UI[name] || {}; let args = [];
+  if (U.color) args = [card.querySelector('[data-k=c]').value];
+  else args = $$('input[type=number]', card).map(i => parseFloat(i.value));
+  if (args.some(a => typeof a === 'number' && isNaN(a))) { toast('Valeur numérique invalide', 'bad'); return; }
+  manualAction(name, args);
+}
+
+/* ============================================================
+   Interface : exemples, cours, onglets
+   ============================================================ */
+function buildExamples() {
+  $('#exList').innerHTML = `<p class="hint" style="margin-top:0">Chargez un exemple dans l’éditeur, puis exécutez-le pas à pas pour comprendre chaque étape.</p>` + EXAMPLES.map((e, i) =>
+    `<div class="ex"><h4>${esc(e.title)}</h4><p><span class="tag">${e.tag}</span>${esc(e.desc)}</p>
+     <button class="btn sm" data-load="${i}">📄 Charger</button> <button class="btn primary sm" data-runex="${i}">▶ Lancer</button> <button class="btn sm" data-stepex="${i}">⏭ Pas à pas</button></div>`).join('');
+  $('#exList').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const idx = b.dataset.load ?? b.dataset.runex ?? b.dataset.stepex; if (idx === undefined) return;
+    $('#src').value = EXAMPLES[idx].code; $('#src').scrollTop = 0; onEdit(); openTab('prog');
+    if (b.dataset.runex !== undefined) runSource(true);
+    if (b.dataset.stepex !== undefined) runSource(false);
+  });
+}
+function buildDoc() {
+  const specs = Object.keys(ACTIONS).filter(a => !ACTIONS[a].ext).map(a => { const A = ACTIONS[a];
+    return `<div class="spec">${sigHtml(a)}<span class="cm">// Effet : ${esc(A.effet)}</span><span class="cm">// E.I. : ${esc(A.ei)}</span><span class="cm">// E.F. : ${esc(A.ef)}</span></div>`; }).join('');
+  $('#pane-doc').innerHTML = `
+<h3>1. Qu’est-ce que la machine-tracés ?</h3>
+<p>C’est une machine abstraite composée d’un <b>écran</b> (ce qui est dessiné) et d’une <b>plume</b>. L’<b>état</b> de la machine est donc :</p>
+<ul><li><b>écran</b> : description de ce qui est affiché (le tracé) ;</li>
+<li><b>cap</b> : angle de la plume en degrés, selon la convention de la trigonométrie (0° = vers la droite, 90° = vers le haut) ;</li>
+<li><b>pe</b> (position d’écriture) : <code>haute</code> ou <code>basse</code> ;</li>
+<li><b>pp</b> (position dans le plan) : un point (x ; y).</li></ul>
+<p>Pour dessiner, on n’agit jamais directement sur l’écran : on <b>enchaîne des actions</b> qui modifient la plume (et donc, quand elle est baissée, le tracé).</p>
+<svg viewBox="0 0 220 150" width="100%" style="max-width:300px;display:block;margin:8px auto">
+  <rect x="2" y="2" width="216" height="146" rx="12" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.12)"/>
+  <line x1="110" y1="10" x2="110" y2="140" stroke="#5d688b"/><line x1="15" y1="75" x2="205" y2="75" stroke="#5d688b"/>
+  <path d="M110 75 L175 75" stroke="#22d3ee" stroke-width="2" stroke-dasharray="4 3"/>
+  <path d="M110 75 L156 29" stroke="#7c5cff" stroke-width="3"/><polygon points="160,25 146,31 154,39" fill="#7c5cff"/>
+  <path d="M138 75 A28 28 0 0 0 130 55" stroke="#fbbf24" fill="none" stroke-width="2"/>
+  <text x="143" y="63" fill="#fbbf24" font-size="11">cap</text>
+  <text x="178" y="79" fill="#8e9ac0" font-size="10">0°</text><text x="114" y="20" fill="#8e9ac0" font-size="10">90°</text>
+  <text x="14" y="70" fill="#8e9ac0" font-size="10">180°</text><text x="114" y="138" fill="#8e9ac0" font-size="10">270°</text>
+</svg>
+<p><b>gauche(a)</b> ajoute a degrés au cap (rotation anti-horaire) ; <b>droite(a)</b> en retire.</p>
+
+<h3>2. Notation E.I. / E.F.</h3>
+<p><b>E.I.</b> = <i>État Initial</i> avant l’action ; <b>E.F.</b> = <i>État Final</i> après. Les indices <code>₀</code> et <code>₁</code> désignent les valeurs avant / après (a₀ = cap avant, s₁ = position après…). Le panneau « Explication de l’action » remplace ces symboles par les <b>vraies valeurs</b> à chaque étape.</p>
+
+<h3>3. Les actions de la machine</h3>${specs}
+<p>Types : <code>Angle</code> = réel entre −360 et 360 ; <code>Point</code> = agrégat (x : réel, y : réel).</p>
+<h3>Formule de déplacement</h3>
+<p>Pour <code>avancer(d)</code> depuis (x₀ ; y₀) avec le cap a₀ :</p>
+<p><code>x₁ = x₀ + d·cos(a₀)</code> &nbsp; <code>y₁ = y₀ + d·sin(a₀)</code></p>
+
+<h3>4. Comment fonctionne l’application ?</h3>
+<ol class="steps-how">
+<li><b>Vous écrivez</b> un programme (ou cliquez sur des commandes). Chaque clic ajoute une ligne dans l’éditeur.</li>
+<li><b>Analyse</b> : le programme est lu, les erreurs sont signalées avec leur ligne. Les boucles « répéter » sont dépliées, les actions paramétrées sont appelées avec leurs paramètres : on obtient une <b>liste d’étapes</b>.</li>
+<li><b>Exécution pas à pas</b> : chaque étape part d’un état initial et produit un état final. La ligne du programme est surlignée, l’animation montre le passage de l’E.I. à l’E.F.</li>
+<li><b>Écran mis à jour</b> : si la plume est baissée, le segment est ajouté au tracé. Le journal garde tous les <b>états intermédiaires</b> : cliquez sur une ligne pour revenir en arrière.</li>
+</ol>
+
+<h3>5. Syntaxe du langage</h3>
+<table>
+<tr><th>Élément</th><th>Exemple</th></tr>
+<tr><td>Action de la machine</td><td><code>m.avancer(50)</code> · <code>m.av(50)</code> · <code>avancer(50)</code> · <code>m.lever</code></td></tr>
+<tr><td>Abréviations</td><td><code>av re ga dr dir pos</code></td></tr>
+<tr><td>Point</td><td><code>&lt;30,40&gt;</code> ; champs : <code>s.x</code>, <code>s.y</code></td></tr>
+<tr><td>Variable</td><td><code>lc ← 100</code> ou <code>lc = 100</code> ou <code>lc &lt;- 100</code></td></tr>
+<tr><td>Boucle</td><td><code>répéter 4 fois … frépéter</code> (k = n° d’itération)</td></tr>
+<tr><td>Condition</td><td><code>si n = 0 alors … sinon … fsi</code> (&lt; &gt; &lt;= &gt;= = !=)</td></tr>
+<tr><td>Action paramétrée</td><td><code>action carré(lc) … faction</code> puis <code>carré(80)</code></td></tr>
+<tr><td>Style du cours accepté</td><td><code>action tracerCarré(consulté x : Carré, modifié m : Machine-tracés)</code> … <code>fin algorithme de tracerCarré</code></td></tr>
+<tr><td>Enregistrement</td><td><code>c.s ← &lt;0,0&gt;</code> ; <code>c.lc ← 50</code> ; <code>m.avancer(c.lc)</code></td></tr>
+<tr><td>Fonctions (angles en degrés)</td><td><code>cos sin tan sqrt abs arrondi min max pi</code></td></tr>
+<tr><td>Extensions</td><td><code>m.couleur("rouge")</code> · <code>m.couleur(120)</code> · <code>m.epaisseur(4)</code></td></tr>
+<tr><td>Commentaire</td><td><code>// texte</code> ; séparateur d’instructions : fin de ligne ou <code>;</code></td></tr>
+</table>
+
+<h3>6. Caractériser un carré </h3>
+<p>Un carré se définit par un sommet <b>s</b>, la longueur <b>lc</b> des côtés, l’angle <b>a</b> d’orientation du premier côté et le sens du tracé (↺ trigonométrique). Découvrez les 3 niveaux d’écriture dans l’onglet <b>Exemples</b> : carré « à la main », carré avec <code>répéter 4 fois</code>, puis action <code>tracerCarré</code> paramétrée, ou dépendante du contexte (position et cap courants).</p>
+
+<h3>7. Raccourcis clavier</h3>
+<p><kbd>Espace</kbd> lecture / pause · <kbd>→</kbd> pas suivant · <kbd>←</kbd> pas précédent · <kbd>Début</kbd> / <kbd>Fin</kbd> · molette = zoom · glisser = déplacer la vue · double-clic = positionner la plume.</p>`;
+}
+function openTab(name) {
+  $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  $$('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+  if (name === 'prog') syncEditorOverlay();
+}
+
+/* ============================================================
+   Bindings
+   ============================================================ */
+function bindOptions() {
+  $$('[data-opt]').forEach(el => {
+    const k = el.dataset.opt;
+    const setEl = () => { if (el.type === 'checkbox') el.checked = !!OPT[k]; else el.value = OPT[k]; };
+    setEl();
+    el.addEventListener('input', () => {
+      OPT[k] = el.type === 'checkbox' ? el.checked : (el.type === 'range' ? parseFloat(el.value) : el.value);
+      if (k === 'zoom') view.zoom = OPT.zoom;
+      $$(`[data-opt="${k}"]`).forEach(o => { if (o !== el) { if (o.type === 'checkbox') o.checked = OPT[k]; else o.value = OPT[k]; } });
+      refreshOutputs(); saveOpts(); dirty = true;
+    });
+  });
+  refreshOutputs();
+}
+function refreshOutputs() { $$('[data-out]').forEach(o => { const v = OPT[o.dataset.out]; o.textContent = o.dataset.out === 'zoom' ? '×' + fmt(v, 2) : fmt(v, 1); }); }
+function setZoom(z, px, py) {
+  z = Math.max(.2, Math.min(5, z));
+  if (px !== undefined) { const w = toWorld(px, py); view.zoom = z; view.cx = w.x - (px - W / 2) / z; view.cy = w.y + (py - H / 2) / z; } else view.zoom = z;
+  OPT.zoom = view.zoom; $$('[data-opt="zoom"]').forEach(o => o.value = OPT.zoom); refreshOutputs(); dirty = true;
+}
+function recenter() { view.cx = 0; view.cy = 0; setZoom(1); }
+function onEdit() { syncGutter(); try { localStorage.setItem('mt-src', $('#src').value); } catch (e) {} if (ERR_LINE) clearError(); syncEditorOverlay(); }
+
+function init() {
+  buildCommands(); buildExamples(); buildDoc(); bindOptions();
+  const ta = $('#src');
+  let saved = null; try { saved = localStorage.getItem('mt-src'); } catch (e) {}
+  ta.value = saved || EXAMPLES[0].code; syncGutter();
+  ta.addEventListener('input', onEdit);
+  ta.addEventListener('scroll', syncEditorOverlay);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.setRangeText('  ', s, ta.selectionEnd, 'end'); onEdit(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSource(true); }
+  });
+  $$('.tab').forEach(t => t.addEventListener('click', () => openTab(t.dataset.tab)));
+  $('#bRun').onclick = () => runSource(true);
+  $('#bStepMode').onclick = () => runSource(false);
+  $('#bClearMachine').onclick = resetMachine;
+  $('#bClearEditor').onclick = () => { ta.value = ''; onEdit(); };
+  $('#bCopy').onclick = () => { navigator.clipboard.writeText(ta.value).then(() => toast('Programme copié'), () => toast('Copie impossible', 'bad')); };
+  $('#bSave').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ta.value], { type: 'text/plain' })); a.download = 'programme-machine-traces.txt'; a.click(); URL.revokeObjectURL(a.href); };
+  $('#bOpen').onclick = () => $('#fileIn').click();
+  $('#fileIn').onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { ta.value = t; onEdit(); toast('Fichier chargé'); }); e.target.value = ''; };
+  const SN = { rep: 'répéter 4 fois\n  m.avancer(50)\n  m.gauche(90)\nfrépéter\n', act: 'action nom(lc)\n  m.avancer(lc)\nfaction\n', si: 'si k = 1 alors\n  m.avancer(10)\nsinon\n  m.reculer(10)\nfsi\n', pos: 'm.positionner(<0,0>)\n', var: 'lc ← 100\n', col: 'm.couleur("rouge")\n' };
+  $('#snips').addEventListener('click', e => { const c = e.target.closest('[data-snip]'); if (!c) return; ta.focus(); ta.setRangeText(SN[c.dataset.snip], ta.selectionStart, ta.selectionEnd, 'end'); onEdit(); });
+  $('#bReset').onclick = () => { PL.playing = false; goTo(0); };
+  $('#bPrev').onclick = prev; $('#bNext').onclick = next; $('#bPlay').onclick = play;
+  $('#bEnd').onclick = () => { PL.playing = false; goTo(TL.steps.length); };
+  $('#scrub').addEventListener('input', e => { PL.playing = false; goTo(parseInt(e.target.value, 10)); });
+  $('#jbody').addEventListener('click', e => { const tr = e.target.closest('tr'); if (tr) { PL.playing = false; goTo(parseInt(tr.dataset.i, 10)); } });
+  $('#btnHelp').onclick = () => openTab('doc');
+  $('#btnPng').onclick = () => { render(performance.now()); cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'machine-traces.png'; a.click(); URL.revokeObjectURL(a.href); }); };
+  $('#zIn').onclick = () => setZoom(view.zoom * 1.25); $('#zOut').onclick = () => setZoom(view.zoom / 1.25); $('#zCenter').onclick = recenter; $('#bCenter').onclick = recenter;
+  $('#bDefaults').onclick = () => { OPT = { ...OPT_DEFS }; $$('[data-opt]').forEach(el => { if (el.type === 'checkbox') el.checked = !!OPT[el.dataset.opt]; else el.value = OPT[el.dataset.opt]; }); recenter(); saveOpts(); initInk(); toast('Options par défaut rétablies'); };
+  function initInk() { $('#inkPick').value = OPT.ink || (THEMES[OPT.theme] || THEMES.paper).ink; }
+  initInk();
+  $('#inkPick').addEventListener('input', e => { OPT.ink = e.target.value; saveOpts(); dirty = true; });
+  $('#inkAuto').onclick = () => { OPT.ink = ''; initInk(); saveOpts(); dirty = true; };
+  $('[data-opt="theme"]').addEventListener('input', () => { if (!OPT.ink) initInk(); });
+  // souris sur l'écran
+  let drag = null;
+  cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: false }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => {
+    const r = cv.getBoundingClientRect(), w = toWorld(e.clientX - r.left, e.clientY - r.top);
+    $('#coords').textContent = `x : ${fmt(w.x, 0)} · y : ${fmt(w.y, 0)}`;
+    if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true; view.cx -= dx / view.zoom; view.cy += dy / view.zoom; drag.x = e.clientX; drag.y = e.clientY; dirty = true; }
+  });
+  cv.addEventListener('pointerup', () => drag = null);
+  cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); setZoom(view.zoom * Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  cv.addEventListener('dblclick', e => { const r = cv.getBoundingClientRect(), w = toWorld(e.clientX - r.left, e.clientY - r.top); manualAction('positionner', [Math.round(w.x), Math.round(w.y)]); });
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input,textarea,select')) return;
+    if (e.code === 'Space') { e.preventDefault(); play(); }
+    else if (e.key === 'ArrowRight') next(); else if (e.key === 'ArrowLeft') prev();
+    else if (e.key === 'Home') { PL.playing = false; goTo(0); } else if (e.key === 'End') { PL.playing = false; goTo(TL.steps.length); }
+  });
+  setPipe('edit'); syncAll(); resize();
+  requestAnimationFrame(loop);
+}
+init();
+</script>
+</body>
+</html>
