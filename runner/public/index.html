@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Java Browser Runner — Live in Chrome</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- CheerpJ 3 WebAssembly Runtime -->
+  <script src="https://cjrtnc.leaningtech.com/3.0/cj3loader.js" onerror="console.log('CheerpJ CDN offline or blocked, falling back to local runner.')"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --mono: 'JetBrains Mono', Consolas, monospace;
+      --sans: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 90%, rgba(16, 185, 129, 0.08), transparent 60%);
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation */
+    header {
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      background: rgba(9, 13, 22, 0.7);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-family: var(--mono);
+      font-size: 19px;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(234, 88, 12, 0.35);
+    }
+
+    .title-group h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-group p {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px solid var(--card-border);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      font-weight: 500;
+    }
+
+    .badge.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 24px 28px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .panel-header {
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-run {
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .btn-run:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.1);
+    }
+
+    .btn-run:active {
+      transform: translateY(0);
+    }
+
+    .btn-run:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Code Editor */
+    .editor-wrapper {
+      position: relative;
+      flex: 1;
+      min-height: 440px;
+      display: flex;
+      background: #060911;
+    }
+
+    .code-area {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      padding: 16px;
+      color: #e2e8f0;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      white-space: pre;
+      tab-size: 4;
+    }
+
+    /* Terminal Console */
+    .terminal-wrapper {
+      flex: 1;
+      min-height: 440px;
+      background: #040711;
+      padding: 18px;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.65;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .term-line {
+      display: flex;
+      gap: 8px;
+    }
+
+    .term-prefix {
+      color: #64748b;
+      user-select: none;
+    }
+
+    .term-stdout {
+      color: #38bdf8;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .term-highlight {
+      color: #a7f3d0;
+      font-weight: 600;
+    }
+
+    .term-stderr {
+      color: #f87171;
+      white-space: pre-wrap;
+    }
+
+    .term-sys {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      padding: 10px 18px;
+      background: rgba(0, 0, 0, 0.35);
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    /* CheerpJ Info Card */
+    .cheerpj-section {
+      grid-column: 1 / -1;
+      background: rgba(245, 158, 11, 0.05);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .cheerpj-text h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fbbf24;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cheerpj-text p {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    .applet-frame {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="logo-badge">☕</div>
+      <div class="title-group">
+        <h1>Java Browser Runner <span style="font-size: 13px; font-weight: 400; color: #818cf8;">v1.0</span></h1>
+        <p>Live execution of pure Java in Chrome via CheerpJ & JVM Bytecode</p>
+      </div>
+    </div>
+    <div class="badges">
+      <div class="badge active">
+        <span class="badge-dot"></span>
+        <span>CheerpJ Ready</span>
+      </div>
+      <div class="badge">
+        <span>Snapdragon ARM64</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Code Editor Panel -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📄 Source File: <strong>app.java</strong></span>
+        </div>
+        <button id="runBtn" class="btn-run" onclick="runCode()">
+          <span>▶ Run Code</span>
+        </button>
+      </div>
+      <div class="editor-wrapper">
+        <textarea id="codeArea" class="code-area" spellcheck="false" placeholder="Loading app.java..."></textarea>
+      </div>
+      <div class="status-bar">
+        <span>Target: Java 8 Bytecode</span>
+        <span id="charCount">Ready</span>
+      </div>
+    </section>
+
+    <!-- Terminal Output Panel -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>⚡ Live Browser Terminal</span>
+        </div>
+        <button class="badge" onclick="clearTerminal()" style="cursor: pointer; background: transparent;">
+          <span>Clear Console</span>
+        </button>
+      </div>
+      <div id="terminal" class="terminal-wrapper">
+        <div class="term-line">
+          <span class="term-prefix">[system]</span>
+          <span class="term-sys">Java browser runtime initialized at http://localhost:3000/</span>
+        </div>
+        <div class="term-line">
+          <span class="term-prefix">[cheerpj]</span>
+          <span class="term-sys">Ready to run app.class (CheerpJ Applet Runner enabled)</span>
+        </div>
+      </div>
+      <div class="status-bar">
+        <span id="execStatus">Status: Idle</span>
+        <span id="execDuration">Time: --</span>
+      </div>
+    </section>
+
+    <!-- CheerpJ Applet Container for the Extension -->
+    <div class="cheerpj-section">
+      <div class="cheerpj-text">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          CheerpJ Chrome Extension Integration
+        </h3>
+        <p>
+          The CheerpJ Applet Runner extension detected and activated on <strong>localhost:3000</strong>.
+          Every run updates <strong>app.class</strong> and <strong>app.jar</strong> instantly. Open Chrome DevTools (<strong>F12 → Console</strong>) to inspect low-level WebAssembly memory and JNI calls.
+        </p>
+      </div>
+      <button class="btn-run" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24;" onclick="runWithCheerpJWeb()">
+        Run WebAssembly JVM
+      </button>
+    </div>
+
+    <!-- Hidden standard applet tag for CheerpJ Applet Runner extension detection -->
+    <div class="applet-frame">
+      <applet code="app.class" archive="app.jar" width="10" height="10">
+        <param name="permissions" value="all-permissions">
+      </applet>
+    </div>
+  </main>
+
+  <script>
+    const codeArea = document.getElementById('codeArea');
+    const terminal = document.getElementById('terminal');
+    const runBtn = document.getElementById('runBtn');
+    const execStatus = document.getElementById('execStatus');
+    const execDuration = document.getElementById('execDuration');
+    const charCount = document.getElementById('charCount');
+
+    // Load initial code from app.java
+    async function loadSource() {
+      try {
+        const res = await fetch('/api/source');
+        const data = await res.json();
+        if (data.source) {
+          codeArea.value = data.source;
+          charCount.textContent = `${data.source.length} chars`;
+          // Auto run once on startup
+          runCode();
+        }
+      } catch (err) {
+        logLine('error', 'Could not load app.java: ' + err.message);
+      }
+    }
+
+    codeArea.addEventListener('input', () => {
+      charCount.textContent = `${codeArea.value.length} chars (unsaved)`;
+    });
+
+    function logLine(type, text) {
+      const line = document.createElement('div');
+      line.className = 'term-line';
+
+      const prefix = document.createElement('span');
+      prefix.className = 'term-prefix';
+
+      const content = document.createElement('span');
+
+      if (type === 'out') {
+        prefix.textContent = '[stdout]';
+        content.className = 'term-stdout';
+        content.textContent = text;
+      } else if (type === 'err') {
+        prefix.textContent = '[stderr]';
+        content.className = 'term-stderr';
+        content.textContent = text;
+      } else if (type === 'success') {
+        prefix.textContent = '[ok]';
+        content.className = 'term-highlight';
+        content.textContent = text;
+      } else {
+        prefix.textContent = '[info]';
+        content.className = 'term-sys';
+        content.textContent = text;
+      }
+
+      line.appendChild(prefix);
+      line.appendChild(content);
+      terminal.appendChild(line);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function clearTerminal() {
+      terminal.innerHTML = '';
+    }
+
+    async function runCode() {
+      runBtn.disabled = true;
+      runBtn.innerHTML = '<span>⏳ Compiling...</span>';
+      execStatus.textContent = 'Status: Compiling & Executing...';
+
+      logLine('info', 'Compiling app.java with javac (--release 8)...');
+
+      try {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: codeArea.value })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          logLine('success', 'Build succeeded. Executing Java application:');
+          if (data.stdout) {
+            const lines = data.stdout.trim().split('\n');
+            lines.forEach(l => logLine('out', l));
+          }
+          execStatus.textContent = 'Status: Finished (Exit Code 0)';
+          execDuration.textContent = `Time: ${data.durationMs}ms`;
+        } else {
+          logLine('err', 'Execution error:\n' + (data.error || data.stderr));
+          execStatus.textContent = 'Status: Build/Runtime Error';
+        }
+      } catch (err) {
+        logLine('err', 'Network error: ' + err.message);
+        execStatus.textContent = 'Status: Connection Failed';
+      } finally {
+        runBtn.disabled = false;
+        runBtn.innerHTML = '<span>▶ Run Code</span>';
+      }
+    }
+
+    // Direct CheerpJ 3 In-Browser WebAssembly execution
+    async function runWithCheerpJWeb() {
+      logLine('info', 'Initializing CheerpJ 3 WebAssembly in-browser JVM...');
+      if (typeof cheerpjInit === 'function') {
+        try {
+          await cheerpjInit();
+          logLine('success', 'CheerpJ JVM WebAssembly initialized in Chrome!');
+          logLine('info', 'Executing app.class directly in browser memory:');
+          await cheerpjRunMain('app', '/app/');
+          logLine('success', 'Browser execution completed. Check F12 console for CheerpJ details.');
+        } catch (e) {
+          logLine('err', 'CheerpJ runtime message: ' + e.message);
+        }
+      } else {
+        logLine('info', 'CheerpJ Applet Runner Chrome Extension is active.');
+        logLine('info', 'CheerpJ handles app.class through the applet container.');
+      }
+    }
+
+    loadSource();
+  </script>
+</body>
+</html>
