@@ -17,7 +17,10 @@ public class app {
         // System.out.println(ratioPairs(tab)+ " %");
         // System.out.println(maxValue(tab));
         // System.out.println(appartient(5, tab));
-        System.out.println(estTrie(tab));
+        // System.out.println(estTrie(tab));
+        // System.out.println(tousEgaux(tab));
+        inverse(tab);
+        System.out.println(tabEnChaine(tab));
 
     }
 
@@ -93,10 +96,28 @@ public class app {
 
     public static boolean estTrie(int[] tab) {
         for (int i = 0; i < tab.length - 1; i++) {
-            if (tab[i] > tab[i + 1] ) {
+            if (tab[i] > tab[i + 1]) {
                 return false;
             }
         }
         return true;
+    }
+
+    public static boolean tousEgaux(int[] tab) {
+        for (int i = 0; i < tab.length; i++) {
+            if (tab[0] != tab[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static void inverse(int[] tab) {
+        int n = tab.length;
+        for (int i = 0; i < n / 2; i++) {
+            int temp = tab[i];
+            tab[i] = tab[n - 1 - i];
+            tab[n - 1 - i] = temp;
+        }
     }
 }
